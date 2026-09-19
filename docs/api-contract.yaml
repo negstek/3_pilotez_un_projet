@@ -1,0 +1,400 @@
+openapi: 3.0.3
+info:
+  title: DataShare API
+  description: >
+    Contrat d'interface entre le front-end (React) et le back-end (NestJS)
+    du prototype DataShare. Périmètre : MVP (US01 à US06) et fonctionnalités
+    avancées optionnelles implémentées (US07 upload anonyme, US08 gestion
+    des tags, US09 mot de passe fichier, US10 expiration automatique).
+  version: "0.2.0"
+servers:
+  - url: http://localhost:3000
+    description: Environnement de développement local
+
+tags:
+  - name: auth
+    description: Création de compte et connexion (US03, US04)
+  - name: files
+    description: >
+      Upload (authentifié US01 ou anonyme US07), téléchargement (US02),
+      historique (US05), suppression (US06), tags (US08), protection par
+      mot de passe (US09) et expiration automatique (US10)
+
+paths:
+  /auth/register:
+    post:
+      tags: [auth]
+      operationId: registerUser
+      summary: Créer un compte utilisateur (US03)
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: Compte créé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '409':
+          description: Email déjà utilisé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Email invalide ou mot de passe trop court (< 8 caractères)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/login:
+    post:
+      tags: [auth]
+      operationId: loginUser
+      summary: Se connecter (US04)
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Authentification réussie, token JWT retourné
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          description: Email ou mot de passe incorrect
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /files:
+    post:
+      tags: [files]
+      operationId: uploadFile
+      summary: Téléverser un fichier (US01 connecté / US07 anonyme)
+      description: >
+        L'authentification est optionnelle sur cette route. Si un Bearer
+        token valide est fourni, le fichier est rattaché à l'utilisateur
+        (visible dans son historique, US01) et des tags peuvent lui être
+        associés (US08). En l'absence de token, l'upload est traité en
+        anonyme (US07) : le champ `tags` est alors ignoré et le fichier
+        n'apparaît dans aucun historique.
+      security:
+        - bearerAuth: []
+        - {}
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: Fichier à téléverser (max 1 Go)
+                password:
+                  type: string
+                  nullable: true
+                  minLength: 6
+                  description: Mot de passe optionnel de protection du fichier (US09)
+                expiresInDays:
+                  type: integer
+                  minimum: 1
+                  maximum: 7
+                  default: 7
+                  description: Durée avant expiration du lien (1 à 7 jours, US10)
+                tags:
+                  type: array
+                  nullable: true
+                  items:
+                    type: string
+                    maxLength: 30
+                  description: >
+                    Tags libres associés au fichier (US08). Ignoré si
+                    l'upload est anonyme. Les doublons pour un même fichier
+                    sont rejetés côté serveur.
+      responses:
+        '201':
+          description: Fichier téléversé, lien de téléchargement généré
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileUploadResponse'
+        '400':
+          description: >
+            Fichier trop volumineux, type interdit, expiresInDays > 7,
+            tag > 30 caractères ou tag en doublon
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Bearer token fourni mais invalide ou expiré
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    get:
+      tags: [files]
+      operationId: listMyFiles
+      summary: Consulter l'historique de ses fichiers (US05)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: tag
+          in: query
+          required: false
+          description: Filtre optionnel sur les fichiers portant ce tag (US08)
+          schema:
+            type: string
+            maxLength: 30
+      responses:
+        '200':
+          description: Liste des fichiers de l'utilisateur connecté
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/FileHistoryItem'
+        '401':
+          description: Non authentifié
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /files/{id}:
+    delete:
+      tags: [files]
+      operationId: deleteFile
+      summary: Supprimer un de ses fichiers (US06)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Fichier supprimé (métadonnées + binaire)
+        '401':
+          description: Non authentifié
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Le fichier n'appartient pas à l'utilisateur connecté
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Fichier introuvable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /f/{token}:
+    get:
+      tags: [files]
+      operationId: getFileMetadata
+      summary: Consulter les métadonnées d'un fichier partagé avant téléchargement (US02)
+      description: >
+        Endpoint public. Retourne les métadonnées du fichier (nom, taille,
+        date d'expiration, protection par mot de passe) sans exposer le
+        contenu binaire, afin que le front puisse afficher l'écran de
+        téléchargement des maquettes avant de demander le mot de passe.
+      security: []
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Métadonnées du fichier
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FilePublicMetadata'
+        '404':
+          description: Lien invalide ou fichier expiré
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /f/{token}/download:
+    post:
+      tags: [files]
+      operationId: downloadFile
+      summary: Télécharger le fichier associé au lien (US02)
+      description: >
+        Endpoint public. Le mot de passe n'est requis dans le corps de la
+        requête que si `passwordProtected` vaut `true` dans la réponse de
+        `GET /f/{token}`.
+      security: []
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                password:
+                  type: string
+      responses:
+        '200':
+          description: Flux binaire du fichier
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '401':
+          description: Mot de passe manquant ou incorrect
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Lien invalide ou fichier expiré
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    RegisterRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+
+    AuthResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+        user:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            email:
+              type: string
+              format: email
+
+    FileUploadResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        downloadUrl:
+          type: string
+          example: https://datashare.fr/f/UhGyr
+        expiresAt:
+          type: string
+          format: date-time
+
+    FileHistoryItem:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        originalName:
+          type: string
+        sizeBytes:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum: [active, expired]
+        passwordProtected:
+          type: boolean
+        tags:
+          type: array
+          items:
+            type: string
+          description: Tags associés au fichier (US08)
+
+    FilePublicMetadata:
+      type: object
+      properties:
+        originalName:
+          type: string
+        sizeBytes:
+          type: integer
+        mimeType:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+        passwordProtected:
+          type: boolean
+
+    Error:
+      type: object
+      properties:
+        statusCode:
+          type: integer
+        message:
+          type: string
