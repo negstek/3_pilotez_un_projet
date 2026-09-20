@@ -1,0 +1,32 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug back (NestJS)",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "start:debug"],
+      "cwd": "${workspaceFolder}/back",
+      "console": "integratedTerminal",
+      "restart": true,
+      "autoAttachChildProcesses": true,
+      "preLaunchTask": "docker: up (postgres)",
+      "skipFiles": ["<node_internals>/**"]
+    },
+    {
+      "type": "chrome",
+      "request": "launch",
+      "name": "Debug front (Chrome)",
+      "url": "http://localhost:5173",
+      "webRoot": "${workspaceFolder}/front",
+      "preLaunchTask": "front: dev server"
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Debug back + front",
+      "configurations": ["Debug back (NestJS)", "Debug front (Chrome)"]
+    }
+  ]
+}

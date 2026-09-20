@@ -1,0 +1,17 @@
+# Dépendances et builds (filet de sécurité, chaque sous-projet a aussi le sien)
+**/node_modules
+**/dist
+**/build
+**/coverage
+
+# Variables d'environnement
+.env
+.env.local
+!.env.example
+
+# Éditeurs / OS
+.DS_Store
+*.log
+
+# Contexte local Claude Code (non versionné)
+CLAUDE.local.md
