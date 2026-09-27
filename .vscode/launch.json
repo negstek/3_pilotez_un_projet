@@ -11,7 +11,7 @@
       "console": "integratedTerminal",
       "restart": true,
       "autoAttachChildProcesses": true,
-      "preLaunchTask": "docker: up (postgres)",
+      "preLaunchTask": "debug back: prepare",
       "skipFiles": ["<node_internals>/**"]
     },
     {
@@ -20,7 +20,46 @@
       "name": "Debug front (Chrome)",
       "url": "http://localhost:8080",
       "webRoot": "${workspaceFolder}/front",
-      "preLaunchTask": "front: dev server"
+      "preLaunchTask": "debug front: prepare"
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug tests back : fichier courant",
+      "program": "${workspaceFolder}/node_modules/vitest/vitest.mjs",
+      "args": ["run", "${file}"],
+      "cwd": "${workspaceFolder}/back",
+      "console": "integratedTerminal",
+      "autoAttachChildProcesses": true,
+      "smartStep": true,
+      "preLaunchTask": "shared-lib: build",
+      "skipFiles": ["<node_internals>/**", "**/node_modules/**"]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug tests e2e back : fichier courant",
+      "program": "${workspaceFolder}/node_modules/vitest/vitest.mjs",
+      "args": ["run", "--config", "vitest.config.e2e.ts", "${file}"],
+      "cwd": "${workspaceFolder}/back",
+      "console": "integratedTerminal",
+      "autoAttachChildProcesses": true,
+      "smartStep": true,
+      "preLaunchTask": "debug e2e: prepare",
+      "skipFiles": ["<node_internals>/**", "**/node_modules/**"]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug tests front : fichier courant",
+      "program": "${workspaceFolder}/node_modules/vitest/vitest.mjs",
+      "args": ["run", "${file}"],
+      "cwd": "${workspaceFolder}/front",
+      "console": "integratedTerminal",
+      "autoAttachChildProcesses": true,
+      "smartStep": true,
+      "preLaunchTask": "shared-lib: build",
+      "skipFiles": ["<node_internals>/**", "**/node_modules/**"]
     }
   ],
   "compounds": [

@@ -26,3 +26,6 @@ yarn-error.log*
 
 # IDE
 .idea
+
+# Generated Prisma client (npx prisma generate, run by postinstall)
+/src/generated

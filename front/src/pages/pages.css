@@ -1,0 +1,54 @@
+/* Screen-specific styles. Anything needed by a second screen moves to the shared components (src/components/ui/). */
+
+/* Login and sign-up forms */
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.auth-form__switch {
+  align-self: center;
+  margin-top: 4px;
+  font-size: 0.875rem;
+  color: var(--color-accent);
+  text-decoration: none;
+}
+.auth-form__switch:hover {
+  text-decoration: underline;
+}
+
+/* Home screen */
+.home__title {
+  margin-bottom: 20px;
+  font-size: 1.5rem;
+  font-weight: 400;
+  text-align: center;
+}
+.home__upload {
+  display: grid;
+  width: 96px;
+  height: 96px;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.25);
+  cursor: not-allowed;
+}
+.home__upload span {
+  display: grid;
+  width: 64px;
+  height: 64px;
+  place-items: center;
+  border-radius: 50%;
+  font-size: 1.75rem;
+  color: #fff;
+  background: #1b1022;
+}
+
+/* Temporary personal space */
+.my-space {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  text-align: center;
+}

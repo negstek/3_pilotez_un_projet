@@ -6,7 +6,14 @@ info:
     du prototype DataShare. Périmètre : MVP (US01 à US06) et fonctionnalités
     avancées optionnelles implémentées (US07 upload anonyme, US08 gestion
     des tags, US09 mot de passe fichier, US10 expiration automatique).
-  version: "0.3.0"
+
+
+    Codes d'erreur (cf. note « codes d'erreur HTTP » de
+    docs/architecture.md) : toute violation d'un « contrôle de saisie » des
+    spécifications renvoie 422 ; 400 est réservé à une requête illisible
+    (corps JSON ou multipart mal formé). Chaque erreur porte un message
+    explicite, lisible par l'utilisateur, dans le champ `message`.
+  version: "0.5.0"
 servers:
   - url: http://localhost:3000
     description: Environnement de développement local
@@ -47,7 +54,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
         '422':
-          description: Email invalide ou mot de passe trop court (< 8 caractères)
+          description: >
+            Email invalide, mot de passe trop court (< 8 caractères) ou trop
+            long (> 72 octets UTF-8)
           content:
             application/json:
               schema:
@@ -74,6 +83,36 @@ paths:
                 $ref: '#/components/schemas/AuthResponse'
         '401':
           description: Email ou mot de passe incorrect
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Email au format invalide ou mot de passe vide
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/me:
+    get:
+      tags: [auth]
+      operationId: getCurrentUser
+      summary: Identité de l'utilisateur associé au token (US04)
+      description: >
+        Permet au client de vérifier qu'un token est toujours accepté par
+        l'API et sert de route témoin pour le guard JWT.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Utilisateur authentifié
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthUser'
+        '401':
+          description: Token absent, invalide ou expiré
           content:
             application/json:
               schema:
@@ -113,7 +152,11 @@ paths:
                   type: string
                   nullable: true
                   minLength: 6
-                  description: Mot de passe optionnel de protection du fichier (US09)
+                  description: >
+                    Mot de passe optionnel de protection du fichier (US09) :
+                    6 caractères minimum et 72 octets UTF-8 maximum, limite
+                    au-delà de laquelle bcrypt ignore les caractères (même
+                    plafond que le mot de passe du compte).
                 expiresInDays:
                   type: integer
                   minimum: 1
@@ -137,10 +180,13 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/FileUploadResponse'
-        '400':
+        '422':
           description: >
-            Fichier trop volumineux, type interdit, expiresInDays > 7,
-            tag > 30 caractères ou tag en doublon
+            Contrôle de saisie non respecté (US01, US08, US09, US10) :
+            fichier absent, fichier de plus de 1 Go, extension interdite,
+            mot de passe de moins de 6 caractères ou de plus de 72 octets,
+            expiresInDays hors de 1 à 7, tag de plus de 30 caractères ou
+            tag en doublon sur le fichier
           content:
             application/json:
               schema:
@@ -186,6 +232,14 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/FileHistoryItem'
+        '422':
+          description: >
+            Paramètre de filtre invalide (status hors de active, expired,
+            all, ou tag de plus de 30 caractères)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         '401':
           description: Non authentifié
           content:
@@ -304,7 +358,16 @@ paths:
                 type: string
                 format: binary
         '401':
-          description: Mot de passe manquant ou incorrect
+          description: Mot de passe incorrect
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: >
+            Mot de passe absent alors que le fichier est protégé (US02 :
+            champ « requis uniquement si le fichier à télécharger est
+            protégé », validé côté serveur)
           content:
             application/json:
               schema:
@@ -340,6 +403,9 @@ components:
         password:
           type: string
           minLength: 8
+          description: >
+            8 caractères minimum (US03) et 72 octets UTF-8 maximum, limite
+            au-delà de laquelle bcrypt ignore les caractères.
 
     LoginRequest:
       type: object
@@ -351,20 +417,23 @@ components:
         password:
           type: string
 
+    AuthUser:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+
     AuthResponse:
       type: object
       properties:
         accessToken:
           type: string
         user:
-          type: object
-          properties:
-            id:
-              type: string
-              format: uuid
-            email:
-              type: string
-              format: email
+          $ref: '#/components/schemas/AuthUser'
 
     FileUploadResponse:
       type: object
@@ -428,3 +497,9 @@ components:
           type: integer
         message:
           type: string
+          description: >
+            Message lisible par l'utilisateur. Pour une erreur 422, les
+            messages de chaque champ invalide sont concaténés (séparateur « ; »).
+        error:
+          type: string
+          description: Libellé du statut HTTP (ex. « Conflict »)

@@ -1,0 +1,24 @@
+{
+  "compilerOptions": {
+    // Compiled to ES modules with `.d.ts` declarations: the back runs it under
+    // Node ("nodenext", which does not execute TypeScript from node_modules),
+    // the front bundles it with Vite.
+    "target": "ES2023",
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "rootDir": "src",
+    "outDir": "dist",
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "strict": true,
+    "skipLibCheck": true,
+    // No runtime-only TypeScript syntax (enums, namespaces…), so the sources
+    // stay valid for the front's stricter settings (erasableSyntaxOnly).
+    "erasableSyntaxOnly": true,
+    "verbatimModuleSyntax": true,
+    // Framework-agnostic: no Node or DOM globals.
+    "types": []
+  },
+  "include": ["src"]
+}

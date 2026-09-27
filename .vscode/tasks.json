@@ -15,6 +15,40 @@
       "problemMatcher": []
     },
     {
+      // Recompiles @datashare/shared-lib on every change in shared_lib/src.
+      // The back (nest --watch) and the front (Vite) pick up the new
+      // shared_lib/dist and reload. Background task: the debug session starts
+      // once the first compilation is done ("Watching for file changes"), and
+      // the watcher is reused if it is already running.
+      "label": "shared-lib: watch",
+      "type": "shell",
+      "command": "npm run dev -w @datashare/shared-lib",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "isBackground": true,
+      "presentation": {
+        "reveal": "silent",
+        "panel": "dedicated"
+      },
+      "problemMatcher": "$tsc-watch"
+    },
+    {
+      // One-off compilation, for the test debug configurations: tests run
+      // once, so a watcher would be pointless.
+      "label": "shared-lib: build",
+      "type": "shell",
+      "command": "npm run build -w @datashare/shared-lib",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "reveal": "silent",
+        "panel": "shared"
+      },
+      "problemMatcher": "$tsc"
+    },
+    {
       "label": "front: dev server",
       "type": "shell",
       "command": "npm run dev",
@@ -36,6 +70,26 @@
           "endsPattern": "ready in|Local:"
         }
       }
+    },
+    {
+      // Prerequisites of "Debug back (NestJS)": database + shared package.
+      "label": "debug back: prepare",
+      "dependsOn": ["docker: up (postgres)", "shared-lib: watch"],
+      "problemMatcher": []
+    },
+    {
+      // Prerequisites of "Debug front (Chrome)": the shared package must be
+      // compiled before Vite resolves its imports.
+      "label": "debug front: prepare",
+      "dependsOn": ["shared-lib: watch", "front: dev server"],
+      "dependsOrder": "sequence",
+      "problemMatcher": []
+    },
+    {
+      // Prerequisites of the back e2e test debug configuration.
+      "label": "debug e2e: prepare",
+      "dependsOn": ["docker: up (postgres)", "shared-lib: build"],
+      "problemMatcher": []
     }
   ]
 }
