@@ -58,8 +58,10 @@ cd back && npm run start:dev
 cd front && npm run dev
 ```
 
-- Front : http://localhost:8080
-- API : http://localhost:3000
+- Front : https://localhost:8080
+- API : https://localhost:8080/api (proxy du serveur Vite vers NestJS, qui écoute en HTTP sur le port 3000)
+
+Le serveur Vite utilise un certificat auto-signé, généré au premier démarrage : le navigateur affiche un avertissement de sécurité à accepter une fois (« Paramètres avancés » → « Continuer vers localhost »). La session de debug Chrome de VS Code l'accepte automatiquement.
 
 Le back et le front utilisent la version **compilée** de `shared_lib`. Hors VS Code, la garder compilée en continu dans un troisième terminal avec `npm run dev -w @datashare/shared-lib` : l'API et le front prennent alors en compte chaque modification sans redémarrage manuel. Avec les configurations de debug VS Code, c'est automatique (voir « Débogage dans VS Code »).
 
@@ -96,7 +98,7 @@ Les résultats sont consultables sur http://localhost:9000/dashboard?id=datashar
 Le dépôt fournit une configuration de debug prête à l'emploi (`.vscode/launch.json`), accessible depuis l'onglet "Run and Debug" :
 
 - **Debug back (NestJS)** : démarre PostgreSQL et la compilation continue de `shared_lib`, puis lance l'API en mode debug (`start:debug`), avec attachement automatique du débogueur Node.
-- **Debug front (Chrome)** : démarre la compilation continue de `shared_lib` et le serveur de dev Vite, puis ouvre une session de debug Chrome sur `http://localhost:8080`.
+- **Debug front (Chrome)** : démarre la compilation continue de `shared_lib` et le serveur de dev Vite, puis ouvre une session de debug Chrome sur `https://localhost:8080`.
 - **Debug back + front** : lance les deux configurations précédentes en une fois.
 
 Placer les points d'arrêt directement dans le code TypeScript (`back/src` ou `front/src`) avant de lancer la configuration.

@@ -1,5 +1,6 @@
-// Base URL of the API, injected at build time by Vite from front/.env.
-const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000'
+// Base URL of the API, injected at build time by Vite from front/.env. Defaults to the same-origin /api prefix, proxied to NestJS by
+// the Vite dev server (vite.config.ts) and by the reverse proxy in production.
+const API_URL = import.meta.env.VITE_API_URL ?? '/api'
 
 /**
  * HTTP error returned by the API, built from the contract's `Error` body. `status` lets screens react to a specific case (401, 409…);

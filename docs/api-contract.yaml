@@ -15,8 +15,11 @@ info:
     explicite, lisible par l'utilisateur, dans le champ `message`.
   version: "0.5.0"
 servers:
-  - url: http://localhost:3000
-    description: Environnement de développement local
+  - url: https://localhost:8080/api
+    description: >
+      Environnement de développement local : HTTPS via le proxy du serveur
+      Vite, qui retire le préfixe /api et transmet à l'API (NestJS, HTTP sur
+      le port 3000).
 
 tags:
   - name: auth

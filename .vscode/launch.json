@@ -18,7 +18,10 @@
       "type": "chrome",
       "request": "launch",
       "name": "Debug front (Chrome)",
-      "url": "http://localhost:8080",
+      "url": "https://localhost:8080",
+      // The dev server uses a self-signed certificate (front/vite.config.ts): this dedicated debug browser
+      // accepts it instead of showing the security warning at each launch.
+      "runtimeArgs": ["--ignore-certificate-errors"],
       "webRoot": "${workspaceFolder}/front",
       "preLaunchTask": "debug front: prepare"
     },
