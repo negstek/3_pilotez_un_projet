@@ -122,3 +122,7 @@ Pour réinitialiser complètement la base (supprime les données) :
 ```bash
 docker compose down -v && docker compose up -d
 ```
+
+## Stockage des fichiers
+
+Les fichiers téléversés sont enregistrés sur le disque, dans le dossier `STORAGE_DIR` du back (`back/storage` par défaut, ignoré par git), sous un nom aléatoire : leur nom d'origine n'est conservé qu'en base. Les uploads en cours de réception sont écrits dans son sous-dossier `tmp/`. Les tests e2e utilisent un dossier séparé, `back/storage-test`. Après une réinitialisation de la base, vider aussi ce dossier, dont les fichiers ne sont alors plus référencés.

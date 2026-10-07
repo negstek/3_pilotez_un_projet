@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router'
 import { RequireAuth } from './auth/RequireAuth.tsx'
+import { DownloadPage } from './pages/DownloadPage.tsx'
 import { HomePage } from './pages/HomePage.tsx'
 import { LoginPage } from './pages/LoginPage.tsx'
 import { MySpacePage } from './pages/MySpacePage.tsx'
@@ -15,6 +16,8 @@ function App() {
       <Route path="/" element={<HomePage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
+      {/* Shared download link (US02), public: the token is the only key to the file. */}
+      <Route path="/f/:token" element={<DownloadPage />} />
       <Route
         path="/mon-espace"
         element={

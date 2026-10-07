@@ -19,7 +19,9 @@ export class ApiError extends Error {
 
 interface RequestOptions {
   method?: string
+  /** Sent as JSON, except FormData (file upload), sent as multipart/form-data. */
   body?: unknown
+  /** JWT of the session; null or absent for a public route. */
   token?: string | null
 }
 
@@ -30,9 +32,21 @@ interface RequestOptions {
  * @param token JWT added as `Authorization: Bearer` for protected routes.
  * @throws ApiError for any non-2xx response or network failure.
  */
-export async function apiRequest<T>(path: string, { method = 'GET', body, token }: RequestOptions = {}): Promise<T> {
+export async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  return (await send(path, options)).json() as Promise<T>
+}
+
+/** Same as apiRequest, for a binary response (file download). */
+export async function apiBlob(path: string, options: RequestOptions = {}): Promise<Blob> {
+  return (await send(path, options)).blob()
+}
+
+/** Sends the request and turns any failure into an ApiError; the caller reads the body in the format it expects (JSON or Blob). */
+async function send(path: string, { method = 'GET', body, token }: RequestOptions): Promise<Response> {
+  const isForm = body instanceof FormData
   const headers: Record<string, string> = {}
-  if (body !== undefined) headers['Content-Type'] = 'application/json'
+  // For FormData, the browser sets the multipart Content-Type itself, with the boundary separating the parts.
+  if (body !== undefined && !isForm) headers['Content-Type'] = 'application/json'
   if (token) headers.Authorization = `Bearer ${token}`
 
   let response: Response
@@ -40,7 +54,7 @@ export async function apiRequest<T>(path: string, { method = 'GET', body, token 
     response = await fetch(`${API_URL}${path}`, {
       method,
       headers,
-      body: body === undefined ? undefined : JSON.stringify(body),
+      body: body === undefined || isForm ? body : JSON.stringify(body),
     })
   } catch {
     // fetch only rejects when no HTTP response was received (server down, network error, CORS rejection).
@@ -54,5 +68,5 @@ export async function apiRequest<T>(path: string, { method = 'GET', body, token 
     } | null
     throw new ApiError(response.status, error?.message ?? 'Une erreur inattendue est survenue.')
   }
-  return (await response.json()) as T
+  return response
 }

@@ -1,5 +1,4 @@
-// Data model (see docs/mcd.md). The FILE and TAG entities will be added with the user stories that need them (US01, US08), each with its
-// own migration.
+// Data model (see docs/mcd.md). The TAG entity will be added with the user story that needs it (US08), with its own migration.
 //
 // Naming: models and fields are camelCase on the TypeScript side, while tables and columns are snake_case in PostgreSQL (@map / @@map), as
 // in the MCD.
@@ -26,6 +25,31 @@ model User {
   /// bcrypt hash, salt included; the password itself is never stored.
   passwordHash String   @map("password_hash")
   createdAt    DateTime @default(now()) @map("created_at")
+  files        File[]
 
   @@map("user")
+}
+
+/// Uploaded file (US01): metadata here, content in the storage (StorageService).
+model File {
+  id            String   @id @default(uuid()) @db.Uuid
+  /// Owner's account; nullable for anonymous uploads (US07). The files go with the account.
+  ownerId       String?  @map("owner_id") @db.Uuid
+  owner         User?    @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  originalName  String   @map("original_name")
+  /// Key of the content in the storage, opaque outside StorageService.
+  storagePath   String   @map("storage_path")
+  mimeType      String   @map("mime_type")
+  /// BigInt: PostgreSQL's INTEGER stops just under 2 GiB, too close to the 1 GB limit to allow raising it later.
+  sizeBytes     BigInt   @map("size_bytes")
+  /// bcrypt hash of the optional download password; null when the file is not protected.
+  passwordHash  String?  @map("password_hash")
+  /// Public, unpredictable key of the download link (/f/{downloadToken}); the technical id is never exposed in the link.
+  downloadToken String   @unique @map("download_token")
+  expiresAt     DateTime @map("expires_at")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@index([ownerId])
+  @@index([expiresAt])
+  @@map("file")
 }

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { ApiError, apiRequest } from './client.ts'
+import { ApiError, apiBlob, apiRequest } from './client.ts'
 
 // Replaces the global fetch with a stub resolving to `response` (or rejecting with it when it is an Error, to simulate a network failure).
 const mockFetch = (response: Partial<Response> | Error) =>
@@ -24,6 +24,24 @@ describe('apiRequest', () => {
       body: '{"a":1}',
       headers: { 'Content-Type': 'application/json', Authorization: 'Bearer jwt' },
     })
+  })
+
+  it('sends a FormData body as is, leaving the multipart Content-Type to the browser', async () => {
+    mockFetch({ ok: true, json: () => Promise.resolve({}) })
+    const form = new FormData()
+
+    await apiRequest('/files', { method: 'POST', body: form, token: 'jwt' })
+
+    const [, init] = vi.mocked(fetch).mock.calls[0]
+    expect(init?.body).toBe(form)
+    expect(init?.headers).toEqual({ Authorization: 'Bearer jwt' })
+  })
+
+  it('returns a binary response as a Blob', async () => {
+    const blob = new Blob(['contenu'])
+    mockFetch({ ok: true, blob: () => Promise.resolve(blob) })
+
+    await expect(apiBlob('/f/token/download', { method: 'POST', body: {} })).resolves.toBe(blob)
   })
 
   it('turns an error response into an ApiError with the API message', async () => {

@@ -15,6 +15,7 @@
     "format:check": "prettier --check \"src/**/*.{ts,tsx,css}\" \"*.ts\""
   },
   "dependencies": {
+    "@datashare/shared-lib": "*",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-router": "^8.4.0"
@@ -30,6 +31,7 @@
     "@vitejs/plugin-react": "^6.1.1",
     "@vitest/coverage-v8": "^5.0.3",
     "jsdom": "^30.1.2",
+    "msw": "^2.15.0",
     "oxlint": "^1.81.0",
     "prettier": "^3.9.9",
     "typescript": "~6.0.2",

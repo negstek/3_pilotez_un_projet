@@ -114,6 +114,42 @@
   background: var(--color-error-bg);
 }
 
+/* FileInfo */
+.file-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.file-info__icon {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linejoin: round;
+}
+/* min-width: 0 lets the flex item shrink below its content, which the ellipsis needs. */
+.file-info__text {
+  flex: 1;
+  min-width: 0;
+}
+.file-info__name {
+  margin: 0;
+  overflow: hidden;
+  font-size: 0.875rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.file-info__detail {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--color-muted);
+}
+.file-info__detail--invalid {
+  color: var(--color-error);
+}
+
 /* Header */
 .header {
   display: flex;

@@ -20,5 +20,7 @@
     // Framework-agnostic: no Node or DOM globals.
     "types": []
   },
-  "include": ["src"]
+  "include": ["src"],
+  // Tests run with Vitest from the sources; they are not part of the published package.
+  "exclude": ["src/**/*.test.ts"]
 }

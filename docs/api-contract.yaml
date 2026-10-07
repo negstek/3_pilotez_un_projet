@@ -136,6 +136,8 @@ paths:
         Les fichiers exécutables ou scripts sont refusés (contrôle sur
         l'extension du nom d'origine : .exe, .bat, .cmd, .com, .msi, .scr,
         .ps1, .vbs, .sh, .jar).
+        Tant que l'upload anonyme (US07) n'est pas livré, le token est
+        exigé : une requête sans token reçoit 401.
       security:
         - bearerAuth: []
         - {}

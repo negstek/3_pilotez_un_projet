@@ -27,5 +27,9 @@ yarn-error.log*
 # IDE
 .idea
 
+# Uploaded files (STORAGE_DIR) of development and of the e2e tests
+/storage
+/storage-test
+
 # Generated Prisma client (npx prisma generate, run by postinstall)
 /src/generated

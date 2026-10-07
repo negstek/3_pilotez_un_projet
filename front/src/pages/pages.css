@@ -32,7 +32,11 @@
   border: 0;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.25);
-  cursor: not-allowed;
+  cursor: pointer;
+}
+.home__upload:focus-visible {
+  outline: 2px solid var(--color-dark);
+  outline-offset: 2px;
 }
 .home__upload span {
   display: grid;
@@ -43,6 +47,42 @@
   font-size: 1.75rem;
   color: #fff;
   background: #1b1022;
+}
+
+/* Upload and download cards: same vertical layout */
+.upload-form,
+.upload-success,
+.download {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.upload-form__file-error {
+  margin-top: 6px;
+}
+.upload-form__submit,
+.upload-success__copy {
+  align-self: center;
+}
+.upload-success p {
+  margin: 0;
+  font-size: 0.875rem;
+}
+/* The link can be long: it wraps anywhere rather than widening the card. */
+.upload-success__link {
+  padding: 9px 12px;
+  border-radius: var(--radius);
+  font-size: 0.875rem;
+  color: var(--color-accent);
+  background: #f6f5f7;
+  overflow-wrap: anywhere;
+}
+
+/* Download card */
+.download__loading {
+  margin: 0;
+  text-align: center;
+  color: var(--color-muted);
 }
 
 /* Temporary personal space */
