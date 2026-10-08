@@ -44,6 +44,14 @@ describe('apiRequest', () => {
     await expect(apiBlob('/f/token/download', { method: 'POST', body: {} })).resolves.toBe(blob)
   })
 
+  it('resolves a 204 without reading its empty body', async () => {
+    const json = vi.fn()
+    mockFetch({ ok: true, status: 204, json })
+
+    await expect(apiRequest('/files/f1', { method: 'DELETE', token: 'jwt' })).resolves.toBeUndefined()
+    expect(json).not.toHaveBeenCalled()
+  })
+
   it('turns an error response into an ApiError with the API message', async () => {
     mockFetch({
       ok: false,

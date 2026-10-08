@@ -1,39 +1,28 @@
 openapi: 3.0.3
 info:
   title: DataShare API
-  description: >
-    Contrat d'interface entre le front-end (React) et le back-end (NestJS)
-    du prototype DataShare. Périmètre : MVP (US01 à US06) et fonctionnalités
-    avancées optionnelles implémentées (US07 upload anonyme, US08 gestion
-    des tags, US09 mot de passe fichier, US10 expiration automatique).
+  description: |
+    Contrat d'interface entre le front-end (React) et le back-end (NestJS) du prototype DataShare. Périmètre : MVP (US01 à US06) et fonctionnalités avancées optionnelles implémentées (US07 upload anonyme, US08 gestion des tags, US09 mot de passe fichier, US10 expiration automatique).
 
-
-    Codes d'erreur (cf. note « codes d'erreur HTTP » de
-    docs/architecture.md) : toute violation d'un « contrôle de saisie » des
-    spécifications renvoie 422 ; 400 est réservé à une requête illisible
-    (corps JSON ou multipart mal formé). Chaque erreur porte un message
-    explicite, lisible par l'utilisateur, dans le champ `message`.
-  version: "0.5.0"
+    Codes d'erreur (cf. note « codes d'erreur HTTP » de docs/architecture.md) : toute violation d'un « contrôle de saisie » des spécifications renvoie 422 ; 400 est réservé à une requête illisible (corps JSON ou multipart mal formé). Chaque erreur porte un message explicite, lisible par l'utilisateur, dans le champ `message`.
+  version: 0.5.0
 servers:
   - url: https://localhost:8080/api
-    description: >
-      Environnement de développement local : HTTPS via le proxy du serveur
-      Vite, qui retire le préfixe /api et transmet à l'API (NestJS, HTTP sur
-      le port 3000).
+    description: |
+      Environnement de développement local : HTTPS via le proxy du serveur Vite, qui retire le préfixe /api et transmet à l'API (NestJS, HTTP sur le port 3000).
 
 tags:
   - name: auth
     description: Création de compte et connexion (US03, US04)
   - name: files
-    description: >
-      Upload (authentifié US01 ou anonyme US07), téléchargement (US02),
-      historique (US05), suppression (US06), tags (US08), protection par
-      mot de passe (US09) et expiration automatique (US10)
+    description: |
+      Upload (authentifié US01 ou anonyme US07), téléchargement (US02), historique (US05), suppression (US06), tags (US08), protection par mot de passe (US09) et expiration automatique (US10)
 
 paths:
   /auth/register:
     post:
-      tags: [auth]
+      tags:
+        - auth
       operationId: registerUser
       summary: Créer un compte utilisateur (US03)
       security: []
@@ -57,9 +46,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
         '422':
-          description: >
-            Email invalide, mot de passe trop court (< 8 caractères) ou trop
-            long (> 72 octets UTF-8)
+          description: |
+            Email invalide, mot de passe trop court (< 8 caractères) ou trop long (> 72 octets UTF-8)
           content:
             application/json:
               schema:
@@ -67,7 +55,8 @@ paths:
 
   /auth/login:
     post:
-      tags: [auth]
+      tags:
+        - auth
       operationId: loginUser
       summary: Se connecter (US04)
       security: []
@@ -99,12 +88,12 @@ paths:
 
   /auth/me:
     get:
-      tags: [auth]
+      tags:
+        - auth
       operationId: getCurrentUser
       summary: Identité de l'utilisateur associé au token (US04)
-      description: >
-        Permet au client de vérifier qu'un token est toujours accepté par
-        l'API et sert de route témoin pour le guard JWT.
+      description: |
+        Permet au client de vérifier qu'un token est toujours accepté par l'API et sert de route témoin pour le guard JWT.
       security:
         - bearerAuth: []
       responses:
@@ -123,21 +112,12 @@ paths:
 
   /files:
     post:
-      tags: [files]
+      tags:
+        - files
       operationId: uploadFile
       summary: Téléverser un fichier (US01 connecté / US07 anonyme)
-      description: >
-        L'authentification est optionnelle sur cette route. Si un Bearer
-        token valide est fourni, le fichier est rattaché à l'utilisateur
-        (visible dans son historique, US01) et des tags peuvent lui être
-        associés (US08). En l'absence de token, l'upload est traité en
-        anonyme (US07) : le champ `tags` est alors ignoré et le fichier
-        n'apparaît dans aucun historique.
-        Les fichiers exécutables ou scripts sont refusés (contrôle sur
-        l'extension du nom d'origine : .exe, .bat, .cmd, .com, .msi, .scr,
-        .ps1, .vbs, .sh, .jar).
-        Tant que l'upload anonyme (US07) n'est pas livré, le token est
-        exigé : une requête sans token reçoit 401.
+      description: |
+        L'authentification est optionnelle sur cette route. Si un Bearer token valide est fourni, le fichier est rattaché à l'utilisateur (visible dans son historique, US01) et des tags peuvent lui être associés (US08). En l'absence de token, l'upload est traité en anonyme (US07) : le champ `tags` est alors ignoré et le fichier n'apparaît dans aucun historique. Les fichiers exécutables ou scripts sont refusés (contrôle sur l'extension du nom d'origine : .exe, .bat, .cmd, .com, .msi, .scr, .ps1, .vbs, .sh, .jar). Tant que l'upload anonyme (US07) n'est pas livré, le token est exigé : une requête sans token reçoit 401.
       security:
         - bearerAuth: []
         - {}
@@ -147,7 +127,8 @@ paths:
           multipart/form-data:
             schema:
               type: object
-              required: [file]
+              required:
+                - file
               properties:
                 file:
                   type: string
@@ -157,11 +138,8 @@ paths:
                   type: string
                   nullable: true
                   minLength: 6
-                  description: >
-                    Mot de passe optionnel de protection du fichier (US09) :
-                    6 caractères minimum et 72 octets UTF-8 maximum, limite
-                    au-delà de laquelle bcrypt ignore les caractères (même
-                    plafond que le mot de passe du compte).
+                  description: |
+                    Mot de passe optionnel de protection du fichier (US09) : 6 caractères minimum et 72 octets UTF-8 maximum, limite au-delà de laquelle bcrypt ignore les caractères (même plafond que le mot de passe du compte).
                 expiresInDays:
                   type: integer
                   minimum: 1
@@ -174,10 +152,8 @@ paths:
                   items:
                     type: string
                     maxLength: 30
-                  description: >
-                    Tags libres associés au fichier (US08). Ignoré si
-                    l'upload est anonyme. Les doublons pour un même fichier
-                    sont rejetés côté serveur.
+                  description: |
+                    Tags libres associés au fichier (US08). Ignoré si l'upload est anonyme. Les doublons pour un même fichier sont rejetés côté serveur.
       responses:
         '201':
           description: Fichier téléversé, lien de téléchargement généré
@@ -185,26 +161,23 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/FileUploadResponse'
-        '422':
-          description: >
-            Contrôle de saisie non respecté (US01, US08, US09, US10) :
-            fichier absent, fichier de plus de 1 Go, extension interdite,
-            mot de passe de moins de 6 caractères ou de plus de 72 octets,
-            expiresInDays hors de 1 à 7, tag de plus de 30 caractères ou
-            tag en doublon sur le fichier
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
         '401':
           description: Bearer token fourni mais invalide ou expiré
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        '422':
+          description: |
+            Contrôle de saisie non respecté (US01, US08, US09, US10) : fichier absent, fichier de plus de 1 Go, extension interdite, mot de passe de moins de 6 caractères ou de plus de 72 octets, expiresInDays hors de 1 à 7, tag de plus de 30 caractères ou tag en doublon sur le fichier
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 
     get:
-      tags: [files]
+      tags:
+        - files
       operationId: listMyFiles
       summary: Consulter l'historique de ses fichiers (US05)
       security:
@@ -213,13 +186,14 @@ paths:
         - name: status
           in: query
           required: false
-          description: >
-            Filtre sur l'état du lien. Par défaut, seuls les fichiers non
-            expirés sont renvoyés (US06) ; les fichiers expirés restent
-            visibles jusqu'à leur purge quotidienne (US10).
+          description: |
+            Filtre sur l'état du lien. Par défaut, seuls les fichiers non expirés sont renvoyés (US06) ; les fichiers expirés restent visibles jusqu'à leur purge quotidienne (US10).
           schema:
             type: string
-            enum: [active, expired, all]
+            enum:
+              - active
+              - expired
+              - all
             default: active
         - name: tag
           in: query
@@ -237,16 +211,15 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/FileHistoryItem'
-        '422':
-          description: >
-            Paramètre de filtre invalide (status hors de active, expired,
-            all, ou tag de plus de 30 caractères)
+        '401':
+          description: Non authentifié
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-        '401':
-          description: Non authentifié
+        '422':
+          description: |
+            Paramètre de filtre invalide (status hors de active, expired, all, ou tag de plus de 30 caractères)
           content:
             application/json:
               schema:
@@ -254,13 +227,12 @@ paths:
 
   /files/{id}:
     delete:
-      tags: [files]
+      tags:
+        - files
       operationId: deleteFile
       summary: Supprimer un de ses fichiers (US06)
-      description: >
-        Suppression physique et irréversible du fichier et de ses
-        métadonnées. Le front-end doit demander une confirmation à
-        l'utilisateur avant d'appeler cette route (US06).
+      description: |
+        Suppression physique et irréversible du fichier et de ses métadonnées. Le front-end doit demander une confirmation à l'utilisateur avant d'appeler cette route (US06).
       security:
         - bearerAuth: []
       parameters:
@@ -286,7 +258,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
         '404':
-          description: Fichier introuvable
+          description: |
+            Fichier introuvable : identifiant inconnu, fichier déjà supprimé ou identifiant qui n'est pas un UUID
           content:
             application/json:
               schema:
@@ -294,14 +267,13 @@ paths:
 
   /f/{token}:
     get:
-      tags: [files]
+      tags:
+        - files
       operationId: getFileMetadata
-      summary: Consulter les métadonnées d'un fichier partagé avant téléchargement (US02)
-      description: >
-        Endpoint public. Retourne les métadonnées du fichier (nom, taille,
-        date d'expiration, protection par mot de passe) sans exposer le
-        contenu binaire, afin que le front puisse afficher l'écran de
-        téléchargement des maquettes avant de demander le mot de passe.
+      summary: Consulter les métadonnées d'un fichier partagé avant téléchargement
+        (US02)
+      description: |
+        Endpoint public. Retourne les métadonnées du fichier (nom, taille, date d'expiration, protection par mot de passe) sans exposer le contenu binaire, afin que le front puisse afficher l'écran de téléchargement des maquettes avant de demander le mot de passe.
       security: []
       parameters:
         - name: token
@@ -331,13 +303,12 @@ paths:
 
   /f/{token}/download:
     post:
-      tags: [files]
+      tags:
+        - files
       operationId: downloadFile
       summary: Télécharger le fichier associé au lien (US02)
-      description: >
-        Endpoint public. Le mot de passe n'est requis dans le corps de la
-        requête que si `passwordProtected` vaut `true` dans la réponse de
-        `GET /f/{token}`.
+      description: |
+        Endpoint public. Le mot de passe n'est requis dans le corps de la requête que si `passwordProtected` vaut `true` dans la réponse de `GET /f/{token}`.
       security: []
       parameters:
         - name: token
@@ -368,15 +339,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-        '422':
-          description: >
-            Mot de passe absent alors que le fichier est protégé (US02 :
-            champ « requis uniquement si le fichier à télécharger est
-            protégé », validé côté serveur)
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
         '404':
           description: Lien invalide ou fichier déjà purgé
           content:
@@ -385,6 +347,13 @@ paths:
                 $ref: '#/components/schemas/Error'
         '410':
           description: Lien expiré (fichier pas encore purgé par la tâche planifiée)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: |
+            Mot de passe absent alors que le fichier est protégé (US02 : champ « requis uniquement si le fichier à télécharger est protégé », validé côté serveur)
           content:
             application/json:
               schema:
@@ -400,7 +369,9 @@ components:
   schemas:
     RegisterRequest:
       type: object
-      required: [email, password]
+      required:
+        - email
+        - password
       properties:
         email:
           type: string
@@ -408,13 +379,14 @@ components:
         password:
           type: string
           minLength: 8
-          description: >
-            8 caractères minimum (US03) et 72 octets UTF-8 maximum, limite
-            au-delà de laquelle bcrypt ignore les caractères.
+          description: |
+            8 caractères minimum (US03) et 72 octets UTF-8 maximum, limite au-delà de laquelle bcrypt ignore les caractères.
 
     LoginRequest:
       type: object
-      required: [email, password]
+      required:
+        - email
+        - password
       properties:
         email:
           type: string
@@ -471,14 +443,21 @@ components:
           format: date-time
         status:
           type: string
-          enum: [active, expired]
+          enum:
+            - active
+            - expired
         passwordProtected:
           type: boolean
+        downloadUrl:
+          type: string
+          description: |
+            Lien de partage, identique à celui renvoyé à l'upload (bouton « Accéder » des maquettes)
+          example: https://datashare.fr/f/UhGyr
         tags:
           type: array
           items:
             type: string
-          description: Tags associés au fichier (US08)
+          description: Tags associés au fichier (US08, renvoyé à partir de cette user story)
 
     FilePublicMetadata:
       type: object
@@ -502,9 +481,8 @@ components:
           type: integer
         message:
           type: string
-          description: >
-            Message lisible par l'utilisateur. Pour une erreur 422, les
-            messages de chaque champ invalide sont concaténés (séparateur « ; »).
+          description: |
+            Message lisible par l'utilisateur. Pour une erreur 422, les messages de chaque champ invalide sont concaténés (séparateur « ; »).
         error:
           type: string
           description: Libellé du statut HTTP (ex. « Conflict »)

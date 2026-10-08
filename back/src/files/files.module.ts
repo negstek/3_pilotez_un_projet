@@ -9,7 +9,7 @@ import { DownloadController } from './download.controller.js';
 import { FilesController } from './files.controller.js';
 import { FilesService } from './files.service.js';
 
-/** Upload and download of files (US01, US02). */
+/** Upload, download, history and deletion of files (US01, US02, US05, US06). */
 @Module({
   imports: [
     AuthModule,

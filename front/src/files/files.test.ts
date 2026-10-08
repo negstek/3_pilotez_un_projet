@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { daysUntil, expiryNotice, formatDuration, formatSize } from './format.ts'
+import { daysUntil, expiryLabel, expiryNotice, formatDate, formatDuration, formatSize } from './format.ts'
 import { validateFilePassword, validateUploadFile } from './validation.ts'
 
 describe('formatSize', () => {
@@ -42,6 +42,24 @@ describe('expiry of a shared file (US02)', () => {
       variant: 'info',
       text: 'Ce fichier expirera dans 3 jours.',
     })
+  })
+})
+
+describe('history line (US05)', () => {
+  const now = new Date(2026, 9, 6, 18, 0)
+
+  it('formats a date in French', () => {
+    expect(formatDate(new Date(2026, 9, 9, 9, 0).toISOString())).toBe('09/10/2026')
+  })
+
+  it('shows the expiry relative to today, with the date beyond tomorrow', () => {
+    expect(expiryLabel(new Date(2026, 9, 6, 22, 0).toISOString(), 'active', now)).toBe("Expire aujourd'hui")
+    expect(expiryLabel(new Date(2026, 9, 7, 9, 0).toISOString(), 'active', now)).toBe('Expire demain')
+    expect(expiryLabel(new Date(2026, 9, 9, 9, 0).toISOString(), 'active', now)).toBe('Expire dans 3 jours, le 09/10/2026')
+  })
+
+  it('shows when the link of an expired file stopped working', () => {
+    expect(expiryLabel(new Date(2026, 9, 5, 9, 0).toISOString(), 'expired', now)).toBe('Expiré le 05/10/2026')
   })
 })
 

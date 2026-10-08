@@ -1,4 +1,4 @@
-import { GoneException, NotFoundException, UnauthorizedException, UnprocessableEntityException } from '@nestjs/common';
+import { ForbiddenException, GoneException, NotFoundException, UnauthorizedException, UnprocessableEntityException } from '@nestjs/common';
 import type { ConfigService } from '@nestjs/config';
 import bcrypt from 'bcrypt';
 import { Readable } from 'node:stream';
@@ -9,12 +9,14 @@ import { FilesService } from './files.service.js';
 // Unit tests of FilesService. Prisma and the storage are mocked: the HTTP layer, multer and the real database are covered by
 // test/files.e2e-spec.ts.
 describe('FilesService', () => {
-  // Only the Prisma methods the service calls (prisma.file.create / findUnique), and the three StorageService methods.
+  // Only the Prisma methods the service calls (prisma.file.*), and the three StorageService methods.
   const create = vi.fn();
   const findUnique = vi.fn();
+  const findMany = vi.fn();
+  const deleteMany = vi.fn();
   const storage = { save: vi.fn(), read: vi.fn(), remove: vi.fn() };
   const service = new FilesService(
-    { file: { create, findUnique } } as unknown as PrismaService,
+    { file: { create, findUnique, findMany, deleteMany } } as unknown as PrismaService,
     storage as unknown as StorageService,
     { get: () => 'https://datashare.test' } as unknown as ConfigService,
   );
@@ -25,6 +27,7 @@ describe('FilesService', () => {
   /** Stored file, valid for one more day unless overridden. */
   const stored = (overrides: object = {}) => ({
     id: 'f1',
+    ownerId: 'u1',
     originalName: 'rapport.pdf',
     storagePath: 'key-1',
     mimeType: 'application/pdf',
@@ -32,6 +35,7 @@ describe('FilesService', () => {
     passwordHash: null,
     downloadToken: 'token-1',
     expiresAt: new Date(Date.now() + DAY_MS),
+    createdAt: new Date(Date.now() - DAY_MS),
     ...overrides,
   });
 
@@ -123,6 +127,79 @@ describe('FilesService', () => {
       await expect(service.download('token-1', 'secret1')).resolves.toMatchObject({ stream });
       // The content is only opened once the password is accepted.
       expect(storage.read).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('list (US05)', () => {
+    it('filters on the owner and, by default, on the files not expired yet (US06), most recent first', async () => {
+      findMany.mockResolvedValue([]);
+
+      await service.list('u1', 'active');
+
+      const { where, orderBy } = findMany.mock.calls[0][0];
+      expect(where).toEqual({ ownerId: 'u1', expiresAt: { gt: expect.any(Date) } });
+      expect(orderBy).toEqual({ createdAt: 'desc' });
+    });
+
+    it('filters on the expired files, or not at all', async () => {
+      findMany.mockResolvedValue([]);
+
+      await service.list('u1', 'expired');
+      await service.list('u1', 'all');
+
+      expect(findMany.mock.calls[0][0].where).toEqual({ ownerId: 'u1', expiresAt: { lte: expect.any(Date) } });
+      expect(findMany.mock.calls[1][0].where).toEqual({ ownerId: 'u1' });
+    });
+
+    it('returns the history fields with the link, without the storage key nor the hash', async () => {
+      const expired = stored({ id: 'f2', passwordHash: 'hash', downloadToken: 'token-2', expiresAt: new Date(Date.now() - 1000) });
+      findMany.mockResolvedValue([stored(), expired]);
+
+      const [active, old] = await service.list('u1', 'all');
+
+      expect(active).toEqual({
+        id: 'f1',
+        originalName: 'rapport.pdf',
+        sizeBytes: 42,
+        createdAt: expect.any(String),
+        expiresAt: expect.any(String),
+        status: 'active',
+        passwordProtected: false,
+        downloadUrl: 'https://datashare.test/f/token-1',
+      });
+      expect(old).toMatchObject({ status: 'expired', passwordProtected: true });
+    });
+  });
+
+  describe('remove (US06)', () => {
+    it('deletes the metadata, then the content', async () => {
+      findUnique.mockResolvedValue(stored());
+      deleteMany.mockResolvedValue({ count: 1 });
+
+      await service.remove('f1', 'u1');
+
+      expect(deleteMany).toHaveBeenCalledWith({ where: { id: 'f1' } });
+      expect(storage.remove).toHaveBeenCalledWith('key-1');
+      expect(deleteMany.mock.invocationCallOrder[0]).toBeLessThan(storage.remove.mock.invocationCallOrder[0]);
+    });
+
+    it('refuses with a 403 the file of another user, or an anonymous upload, and leaves it untouched', async () => {
+      for (const ownerId of ['u2', null]) {
+        findUnique.mockResolvedValue(stored({ ownerId }));
+        await expect(service.remove('f1', 'u1')).rejects.toBeInstanceOf(ForbiddenException);
+      }
+      expect(deleteMany).not.toHaveBeenCalled();
+      expect(storage.remove).not.toHaveBeenCalled();
+    });
+
+    it('rejects an unknown file with a 404, including one deleted meanwhile by another request', async () => {
+      findUnique.mockResolvedValue(null);
+      await expect(service.remove('inconnu', 'u1')).rejects.toBeInstanceOf(NotFoundException);
+
+      findUnique.mockResolvedValue(stored());
+      deleteMany.mockResolvedValue({ count: 0 });
+      await expect(service.remove('f1', 'u1')).rejects.toBeInstanceOf(NotFoundException);
+      expect(storage.remove).not.toHaveBeenCalled();
     });
   });
 });

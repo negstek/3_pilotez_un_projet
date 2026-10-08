@@ -1,5 +1,5 @@
-// Files: bodies of the `files` routes (mirroring docs/api-contract.yaml, which remains the reference) and the input rules of US01 / US02,
-// applied by the upload DTO (authoritative, 422 on failure) and by the upload and download forms.
+// Files: bodies of the `files` routes (mirroring docs/api-contract.yaml, which remains the reference) and the input rules of US01, US02 and
+// US05, applied by the back's DTOs (authoritative, 422 on failure) and by the front's forms.
 
 /** Response of `POST /files` (US01). */
 export interface FileUploadResponse {
@@ -18,6 +18,28 @@ export interface FilePublicMetadata {
   /** ISO 8601 date. */
   expiresAt: string;
   passwordProtected: boolean;
+}
+
+/** State of a link in the history (US05): `expired` from its expiry date until the daily purge deletes it (US10). */
+export type FileStatus = 'active' | 'expired';
+
+/** Values of the `status` filter of `GET /files`: only the active files by default (US06), the expired ones, or both. */
+export const FILE_STATUS_FILTERS = ['active', 'expired', 'all'] as const;
+export type FileStatusFilter = (typeof FILE_STATUS_FILTERS)[number];
+
+/** Item of `GET /files`: a file of the logged-in user's history (US05). */
+export interface FileHistoryItem {
+  id: string;
+  originalName: string;
+  sizeBytes: number;
+  /** Upload date, ISO 8601. */
+  createdAt: string;
+  /** ISO 8601 date. */
+  expiresAt: string;
+  status: FileStatus;
+  passwordProtected: boolean;
+  /** Same link as the one returned at upload, so that the owner can open or share it again ("Accéder" button of the mockups). */
+  downloadUrl: string;
 }
 
 /** Body of `POST /f/{token}/download`; the password is only required when the file is protected. */
@@ -56,4 +78,5 @@ export const FILE_MESSAGES = {
   passwordTooShort: `Le mot de passe doit contenir au moins ${FILE_PASSWORD_MIN_LENGTH} caractères`,
   expirationInvalid: `La durée d'expiration doit être comprise entre ${EXPIRATION_MIN_DAYS} et ${EXPIRATION_MAX_DAYS} jours`,
   downloadPasswordRequired: 'Le mot de passe est requis pour télécharger ce fichier',
+  statusFilterInvalid: `Le filtre doit valoir ${FILE_STATUS_FILTERS.join(', ')}`,
 } as const;

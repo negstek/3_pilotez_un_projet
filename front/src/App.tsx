@@ -3,7 +3,7 @@ import { RequireAuth } from './auth/RequireAuth.tsx'
 import { DownloadPage } from './pages/DownloadPage.tsx'
 import { HomePage } from './pages/HomePage.tsx'
 import { LoginPage } from './pages/LoginPage.tsx'
-import { MySpacePage } from './pages/MySpacePage.tsx'
+import { MyFilesPage } from './pages/my-files/MyFilesPage.tsx'
 import { RegisterPage } from './pages/RegisterPage.tsx'
 
 /**
@@ -18,11 +18,12 @@ function App() {
       <Route path="/register" element={<RegisterPage />} />
       {/* Shared download link (US02), public: the token is the only key to the file. */}
       <Route path="/f/:token" element={<DownloadPage />} />
+      {/* Personal space: the user's files (US05 / US06). */}
       <Route
         path="/mon-espace"
         element={
           <RequireAuth>
-            <MySpacePage />
+            <MyFilesPage />
           </RequireAuth>
         }
       />

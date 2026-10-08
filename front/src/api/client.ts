@@ -33,7 +33,10 @@ interface RequestOptions {
  * @throws ApiError for any non-2xx response or network failure.
  */
 export async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  return (await send(path, options)).json() as Promise<T>
+  const response = await send(path, options)
+  // 204 No Content (deletion) has no body to parse.
+  if (response.status === 204) return undefined as T
+  return response.json() as Promise<T>
 }
 
 /** Same as apiRequest, for a binary response (file download). */

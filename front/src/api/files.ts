@@ -1,4 +1,4 @@
-import type { FilePublicMetadata, FileUploadResponse } from '@datashare/shared-lib'
+import type { FileHistoryItem, FilePublicMetadata, FileStatusFilter, FileUploadResponse } from '@datashare/shared-lib'
 import { apiBlob, apiRequest } from './client.ts'
 
 // Calls to the file routes (see docs/api-contract.yaml, `files` tag), typed with @datashare/shared-lib like the back.
@@ -23,6 +23,16 @@ export function uploadFile(file: File, { password, expiresInDays }: UploadOption
   form.append('expiresInDays', String(expiresInDays))
   if (password) form.append('password', password)
   return apiRequest('/files', { method: 'POST', body: form, token })
+}
+
+/** US05: files of the logged-in user, filtered on the state of their link; ApiError 401 (session expired). */
+export function listMyFiles(status: FileStatusFilter, token: string | null): Promise<FileHistoryItem[]> {
+  return apiRequest(`/files?status=${status}`, { token })
+}
+
+/** US06: deletes a file of the logged-in user, irreversibly; ApiError 401, 403 (another user's file) or 404 (already deleted). */
+export function deleteFile(id: string, token: string | null): Promise<void> {
+  return apiRequest(`/files/${encodeURIComponent(id)}`, { method: 'DELETE', token })
 }
 
 /** US02: metadata of a shared file; ApiError 404 (unknown link) or 410 (expired). */

@@ -8,9 +8,9 @@ import { AppModule } from '../src/app.module.js';
 import { PrismaService } from '../src/prisma/prisma.service.js';
 import { setupApp } from '../src/setup-app.js';
 
-// End-to-end tests of the upload (US01) and of the download through the link (US02): full application, test database and a dedicated
-// storage directory (STORAGE_DIR from .env.test), both emptied before each test.
-describe('Files (e2e) — US01 / US02', () => {
+// End-to-end tests of the upload (US01), the download through the link (US02), the history (US05) and the deletion (US06): full application,
+// test database and a dedicated storage directory (STORAGE_DIR from .env.test), both emptied before each test.
+describe('Files (e2e) — US01 / US02 / US05 / US06', () => {
   let app: INestApplication;
   let prisma: PrismaService;
   let token: string;
@@ -77,6 +77,21 @@ describe('Files (e2e) — US01 / US02', () => {
       });
   /** Download token of a successful upload, read from the link returned to the user. */
   const tokenOf = (downloadUrl: string) => downloadUrl.split('/f/')[1];
+  /** Moves the expiry date of a file into the past: expired, but not purged yet. */
+  const expire = (id: string) => prisma.file.update({ where: { id }, data: { expiresAt: new Date(Date.now() - 1000) } });
+  /** GET /files as Alice, with an optional query string (`status`). */
+  const history = (query: Record<string, string> = {}) =>
+    request(app.getHttpServer()).get('/files').query(query).set('Authorization', `Bearer ${token}`);
+  /** DELETE /files/:id, as Alice unless another token is given. */
+  const remove = (id: string, as = token) => request(app.getHttpServer()).delete(`/files/${id}`).set('Authorization', `Bearer ${as}`);
+  /** Creates Bob's account and returns his token: a second user, to check that each one only reaches their own files. */
+  const registerBob = async () => {
+    const res = await request(app.getHttpServer())
+      .post('/auth/register')
+      .send({ email: 'bob@test.fr', password: 'motdepasse' })
+      .expect(201);
+    return res.body.accessToken as string;
+  };
   /** Files left in the temporary upload directory. */
   const tempFiles = async () => (existsSync(join(storageDir, 'tmp')) ? readdir(join(storageDir, 'tmp')) : []);
 
@@ -171,7 +186,7 @@ describe('Files (e2e) — US01 / US02', () => {
 
     it('410: rejects an expired link that is not purged yet', async () => {
       const { body } = await upload().expect(201);
-      await prisma.file.update({ where: { id: body.id }, data: { expiresAt: new Date(Date.now() - 1000) } });
+      await expire(body.id);
 
       const res = await metadata(tokenOf(body.downloadUrl)).expect(410);
       expect(res.body.message).toBe("Ce fichier n'est plus disponible en téléchargement car il a expiré");
@@ -201,10 +216,110 @@ describe('Files (e2e) — US01 / US02', () => {
 
     it('404 / 410: same checks as the metadata', async () => {
       const { body } = await upload().expect(201);
-      await prisma.file.update({ where: { id: body.id }, data: { expiresAt: new Date(Date.now() - 1000) } });
+      await expire(body.id);
 
       await download(tokenOf(body.downloadUrl)).expect(410);
       await download('00000000-0000-4000-8000-000000000000').expect(404);
+    });
+  });
+
+  describe('GET /files', () => {
+    it('200: lists the active files of the user by default, most recent first, with the history fields', async () => {
+      const first = (await upload({}, 'premier.pdf').expect(201)).body;
+      const second = (await upload({ password: 'secret1' }, 'second.pdf').expect(201)).body;
+      const expired = (await upload({}, 'ancien.pdf').expect(201)).body;
+      await expire(expired.id);
+
+      const res = await history().expect(200);
+
+      expect(res.body.map((file: { originalName: string }) => file.originalName)).toEqual(['second.pdf', 'premier.pdf']);
+      expect(res.body[0]).toEqual({
+        id: second.id,
+        originalName: 'second.pdf',
+        sizeBytes: content.length,
+        createdAt: expect.any(String),
+        expiresAt: second.expiresAt,
+        status: 'active',
+        passwordProtected: true,
+        downloadUrl: second.downloadUrl,
+      });
+      expect(res.body[1].id).toBe(first.id);
+    });
+
+    it('200: status=expired lists the expired files not purged yet, status=all every file', async () => {
+      await upload({}, 'actif.pdf').expect(201);
+      const expired = (await upload({}, 'ancien.pdf').expect(201)).body;
+      await expire(expired.id);
+
+      const onlyExpired = await history({ status: 'expired' }).expect(200);
+      expect(onlyExpired.body).toEqual([expect.objectContaining({ id: expired.id, status: 'expired' })]);
+      const all = await history({ status: 'all' }).expect(200);
+      expect(all.body.map((file: { status: string }) => file.status)).toEqual(['expired', 'active']);
+    });
+
+    it("200: never lists another user's files", async () => {
+      await upload().expect(201);
+      const bobToken = await registerBob();
+
+      const res = await request(app.getHttpServer()).get('/files').query({ status: 'all' }).set('Authorization', `Bearer ${bobToken}`);
+      expect(res.status).toBe(200);
+      expect(res.body).toEqual([]);
+    });
+
+    it('401: requires a token', async () => {
+      await request(app.getHttpServer()).get('/files').expect(401);
+    });
+
+    it('422: rejects an unknown status', async () => {
+      const res = await history({ status: 'deleted' }).expect(422);
+      expect(res.body.message).toBe('Le filtre doit valoir active, expired, all');
+    });
+  });
+
+  describe('DELETE /files/:id', () => {
+    it('204: deletes the metadata and the content, and the link stops working', async () => {
+      const { body } = await upload().expect(201);
+      const { storagePath } = await prisma.file.findUniqueOrThrow({ where: { id: body.id } });
+
+      await remove(body.id).expect(204);
+
+      expect(await prisma.file.count()).toBe(0);
+      expect(existsSync(join(storageDir, storagePath))).toBe(false);
+      await metadata(tokenOf(body.downloadUrl)).expect(404);
+    });
+
+    it('204: also deletes an expired file not purged yet', async () => {
+      const { body } = await upload().expect(201);
+      await expire(body.id);
+
+      await remove(body.id).expect(204);
+      expect(await prisma.file.count()).toBe(0);
+    });
+
+    it("403: refuses to delete another user's file, which stays downloadable", async () => {
+      const { body } = await upload().expect(201);
+      const bobToken = await registerBob();
+
+      await remove(body.id, bobToken).expect(403);
+
+      expect(await prisma.file.count()).toBe(1);
+      await download(tokenOf(body.downloadUrl)).expect(200);
+    });
+
+    it('404: rejects an unknown or already deleted file, and an id that is not a UUID', async () => {
+      const { body } = await upload().expect(201);
+      await remove(body.id).expect(204);
+
+      const res = await remove(body.id).expect(404);
+      expect(res.body.message).toBe("Ce fichier n'existe pas ou a déjà été supprimé");
+      await remove('pas-un-uuid').expect(404);
+    });
+
+    it('401: requires a token', async () => {
+      const { body } = await upload().expect(201);
+
+      await request(app.getHttpServer()).delete(`/files/${body.id}`).expect(401);
+      expect(await prisma.file.count()).toBe(1);
     });
   });
 });

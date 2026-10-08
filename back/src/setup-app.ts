@@ -12,8 +12,8 @@ export function setupApp(app: INestApplication): void {
       whitelist: true,
       // Turns the JSON body into a DTO instance, which also runs the class-transformer decorators such as @Transform(normalizeEmail).
       transform: true,
-      // 422 rather than Nest's default 400 for invalid input, as specified in docs/api-contract.yaml (400 is kept for business rule
-      // violations). All constraint messages are joined into a single string so the front can display `message` as is, without knowing the
+      // 422 rather than Nest's default 400 for invalid input, as specified in docs/api-contract.yaml (400 is kept for requests the
+      // server cannot read, such as a malformed JSON body; see the note on HTTP error codes in docs/architecture.md). All constraint messages are joined into a single string so the front can display `message` as is, without knowing the
       // validator's error format.
       exceptionFactory: (errors) =>
         new UnprocessableEntityException(errors.flatMap((error) => Object.values(error.constraints ?? {})).join(' ; ')),
