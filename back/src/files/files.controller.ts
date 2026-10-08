@@ -19,6 +19,7 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { CurrentUser } from '../auth/current-user.decorator.js';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
+import { OptionalJwtAuthGuard } from '../auth/optional-jwt-auth.guard.js';
 import { ListFilesQueryDto } from './dto/list-files-query.dto.js';
 import { UploadFileDto } from './dto/upload-file.dto.js';
 import { FILE_NOT_FOUND_MESSAGE, FilesService } from './files.service.js';
@@ -36,16 +37,19 @@ export class FilesController {
    * (anonymous upload) will make the authentication optional on this route.
    */
   @Post()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(OptionalJwtAuthGuard)
   // Size limit, temporary directory and extension filter: options registered with MulterModule in FilesModule.
   @UseInterceptors(UploadErrorsInterceptor, FileInterceptor('file'))
   upload(
     @UploadedFile() file: Express.Multer.File | undefined,
     @Body() dto: UploadFileDto,
-    @CurrentUser() user: AuthUser,
+    @CurrentUser() user: any,
   ): Promise<FileUploadResponse> {
     if (!file) throw new UnprocessableEntityException(FILE_MESSAGES.fileRequired);
-    return this.files.upload(file, dto, user.id);
+    // US07: no user = anonymous upload
+    let ownerId = null
+    if (user) ownerId = user.id
+    return this.files.upload(file, dto, ownerId);
   }
 
   /** US05: 200 with the user's files, active ones only unless `status` says otherwise; 422 for an unknown `status`. */

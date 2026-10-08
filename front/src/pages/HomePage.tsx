@@ -1,6 +1,4 @@
 import { useRef, useState, type ChangeEvent } from 'react'
-import { useNavigate } from 'react-router'
-import { useAuth } from '../auth/AuthContext.tsx'
 import { PublicLayout } from '../components/ui/PublicLayout.tsx'
 import { UploadForm, type UploadResult } from './upload/UploadForm.tsx'
 import { UploadSuccess } from './upload/UploadSuccess.tsx'
@@ -11,18 +9,12 @@ import './pages.css'
  * the invitation, and finally shows the link to share.
  */
 export function HomePage() {
-  const { user } = useAuth()
-  const navigate = useNavigate()
   const inputRef = useRef<HTMLInputElement>(null)
   const [file, setFile] = useState<File | null>(null)
   const [result, setResult] = useState<UploadResult | null>(null)
 
   const pickFile = () => {
-    // US01 is reserved to logged-in users (anonymous upload comes with US07): visitors log in first, then come back here.
-    if (!user) {
-      navigate('/login', { state: { from: '/' } })
-      return
-    }
+    // US07: everybody can upload
     inputRef.current?.click()
   }
 

@@ -59,7 +59,7 @@ export class FilesService {
    * Stores the file and its metadata, and returns the link to share. The password is hashed before anything is written, so a bcrypt
    * failure leaves nothing behind.
    */
-  async upload(file: UploadedFileInfo, dto: UploadFileDto, ownerId: string): Promise<FileUploadResponse> {
+  async upload(file: UploadedFileInfo, dto: UploadFileDto, ownerId: string | null): Promise<FileUploadResponse> {
     const passwordHash = dto.password ? await bcrypt.hash(dto.password, BCRYPT_ROUNDS) : null;
     const storagePath = await this.storage.save(file.path);
     try {
