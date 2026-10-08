@@ -155,7 +155,8 @@ export function MyFilesPage() {
   return (
     <MyFilesLayout>
       <h1 className="my-files__title">Mes fichiers</h1>
-      <div className="my-files__filter" role="group" aria-label="Filtrer par état du lien">
+      {/* <fieldset>: the native element for a group of controls, announced as a group by screen readers without any ARIA role. */}
+      <fieldset className="my-files__filter" aria-label="Filtrer par état du lien">
         {FILTERS.map(({ value, label }) => (
           <button
             key={value}
@@ -167,7 +168,7 @@ export function MyFilesPage() {
             {label}
           </button>
         ))}
-      </div>
+      </fieldset>
       {deleteError && <Callout variant="error">{deleteError}</Callout>}
       {content}
     </MyFilesLayout>
