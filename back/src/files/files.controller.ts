@@ -25,16 +25,21 @@ import { UploadFileDto } from './dto/upload-file.dto.js';
 import { FILE_NOT_FOUND_MESSAGE, FilesService } from './files.service.js';
 import { UploadErrorsInterceptor } from './upload-errors.interceptor.js';
 
-/** Files of the logged-in user (see docs/api-contract.yaml, `files` tag). */
+/**
+ * Upload, open to visitors (US07), and files of the logged-in user (see docs/api-contract.yaml, `files` tag). The download through the
+ * link is served by DownloadController.
+ */
 @Controller('files')
 export class FilesController {
   constructor(private readonly files: FilesService) {}
 
   /**
-   * US01: 201 with the link to share; 422 if the file is missing, over 1 GB or forbidden, or if a field is invalid.
+   * US01 / US07: 201 with the link to share; 422 if the file is missing, over 1 GB or forbidden, or if a field is invalid; 401 if a token
+   * is sent but is invalid or expired.
    *
-   * Reserved to logged-in users for now: the guard runs before multer, so an anonymous request is refused before its file is written. US07
-   * (anonymous upload) will make the authentication optional on this route.
+   * The authentication is optional: with a valid token the file belongs to the user (US01, listed in their history), without any
+   * credentials it is stored with no owner (US07). Same rules and same link in both cases. The guard runs before multer, so a request
+   * with a bad token is refused before its file is written.
    */
   @Post()
   @UseGuards(OptionalJwtAuthGuard)
@@ -43,13 +48,10 @@ export class FilesController {
   upload(
     @UploadedFile() file: Express.Multer.File | undefined,
     @Body() dto: UploadFileDto,
-    @CurrentUser() user: any,
+    @CurrentUser() user: AuthUser | null,
   ): Promise<FileUploadResponse> {
     if (!file) throw new UnprocessableEntityException(FILE_MESSAGES.fileRequired);
-    // US07: no user = anonymous upload
-    let ownerId = null
-    if (user) ownerId = user.id
-    return this.files.upload(file, dto, ownerId);
+    return this.files.upload(file, dto, user?.id ?? null);
   }
 
   /** US05: 200 with the user's files, active ones only unless `status` says otherwise; 422 for an unknown `status`. */

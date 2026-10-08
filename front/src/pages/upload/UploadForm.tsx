@@ -26,8 +26,10 @@ interface UploadFormProps {
 }
 
 /**
- * "Ajouter un fichier" card of the mockups (US01): optional password and expiration, 7 days by default. A file over 1 GB or with a
+ * "Ajouter un fichier" card of the mockups (US01, US07): optional password and expiration, 7 days by default. A file over 1 GB or with a
  * forbidden extension is reported as soon as it is chosen, and the button stays disabled.
+ *
+ * Used with or without a session: the token is sent when there is one, and a visitor's upload is anonymous (US07).
  */
 export function UploadForm({ file, onChangeFile, onUploaded }: Readonly<UploadFormProps>) {
   const { token } = useAuth()
@@ -52,6 +54,8 @@ export function UploadForm({ file, onChangeFile, onUploaded }: Readonly<UploadFo
       const result = await uploadFile(file, { password, expiresInDays }, token)
       onUploaded({ ...result, expiresInDays })
     } catch (error) {
+      // 401 only happens to a logged-in user whose token is no longer accepted: a visitor sends no token and is never refused for it. The
+      // user is not logged out here, unlike in "Mes fichiers": retrying as a visitor would silently detach the file from their account.
       if (error instanceof ApiError && error.status === 401) {
         setServerError('Votre session a expiré : reconnectez-vous pour téléverser un fichier.')
       } else {

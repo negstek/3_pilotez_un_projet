@@ -9,7 +9,7 @@ import { JwtStrategy } from './jwt.strategy.js';
 
 /**
  * Authentication: account creation, login and JWT verification. Other modules protect their routes by importing this module and using
- * JwtAuthGuard.
+ * JwtAuthGuard, or OptionalJwtAuthGuard for a route that is also open to visitors.
  */
 @Module({
   imports: [
@@ -33,7 +33,7 @@ import { JwtStrategy } from './jwt.strategy.js';
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy],
-  // Re-exported so that modules protecting their routes with JwtAuthGuard (FilesModule…) also get the Passport options required above.
+  // Re-exported so that modules protecting their routes with these guards (FilesModule…) also get the Passport options required above.
   exports: [PassportModule],
 })
 export class AuthModule {}

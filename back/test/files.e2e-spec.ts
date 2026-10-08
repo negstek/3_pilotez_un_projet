@@ -8,9 +8,9 @@ import { AppModule } from '../src/app.module.js';
 import { PrismaService } from '../src/prisma/prisma.service.js';
 import { setupApp } from '../src/setup-app.js';
 
-// End-to-end tests of the upload (US01), the download through the link (US02), the history (US05) and the deletion (US06): full application,
-// test database and a dedicated storage directory (STORAGE_DIR from .env.test), both emptied before each test.
-describe('Files (e2e) — US01 / US02 / US05 / US06', () => {
+// End-to-end tests of the upload (US01, anonymous with US07), the download through the link (US02), the history (US05) and the deletion
+// (US06): full application, test database and a dedicated storage directory (STORAGE_DIR from .env.test), both emptied before each test.
+describe('Files (e2e) — US01 / US02 / US05 / US06 / US07', () => {
   let app: INestApplication;
   let prisma: PrismaService;
   let token: string;
@@ -30,6 +30,8 @@ describe('Files (e2e) — US01 / US02 / US05 / US06', () => {
   beforeEach(async () => {
     // Deleting the users deletes their files too (ON DELETE CASCADE).
     await prisma.user.deleteMany();
+    // Anonymous uploads (US07) have no owner, so no cascade reaches them.
+    await prisma.file.deleteMany();
     // multer creates its temporary directory once, at startup: it is recreated after emptying the storage.
     await rm(storageDir, { recursive: true, force: true });
     await mkdir(join(storageDir, 'tmp'), { recursive: true });
@@ -46,17 +48,19 @@ describe('Files (e2e) — US01 / US02 / US05 / US06', () => {
   });
 
   /**
-   * POST /files as Alice, in multipart/form-data like the upload form. The request is returned without being awaited, so that each test
-   * chains its own `.expect(status)`.
+   * POST /files, as Alice by default, in multipart/form-data like the upload form. The request is returned without being awaited, so that
+   * each test chains its own `.expect(status)`.
    *
    * @param fields Text fields of the form (`expiresInDays`, `password`), sent as strings like a browser does: the DTO converts and checks
    *   them. Omitted fields take their server-side default (7 days, no password).
    * @param fileName Name under which `content` is attached to the `file` part: it drives the extension filter and the stored
    *   `originalName`. `null` sends no file part, to test the "file required" case: a field is then added so that the body stays a
    *   multipart form (an empty request would not even reach multer), as when the form is submitted without a file.
+   * @param as Token sent in the Authorization header. `null` sends no header at all, like a visitor without an account (US07).
    */
-  const upload = (fields: Record<string, string> = {}, fileName: string | null = 'rapport.pdf') => {
-    const req = request(app.getHttpServer()).post('/files').set('Authorization', `Bearer ${token}`);
+  const upload = (fields: Record<string, string> = {}, fileName: string | null = 'rapport.pdf', as: string | null = token) => {
+    const req = request(app.getHttpServer()).post('/files');
+    if (as !== null) void req.set('Authorization', `Bearer ${as}`);
     // `void`: field() returns the same request for chaining, nothing to await here (the request is sent by the test's `.expect()`).
     for (const [name, value] of Object.entries(fields)) void req.field(name, value);
     return fileName ? req.attach('file', content, fileName) : req.field('expiresInDays', '7');
@@ -127,10 +131,38 @@ describe('Files (e2e) — US01 / US02 / US05 / US06', () => {
       expect(stored.originalName).toBe('résumé été.pdf');
     });
 
-    it('401: refuses an anonymous upload (US07 not implemented yet)', async () => {
-      await request(app.getHttpServer()).post('/files').attach('file', content, 'rapport.pdf').expect(401);
+    it('201: stores the upload of a visitor without owner, under the same rules and with the same link (US07)', async () => {
+      const res = await upload({ expiresInDays: '2', password: 'secret1' }, 'rapport.pdf', null).expect(201);
+
+      expect(res.body.downloadUrl).toMatch(/^https:\/\/localhost:8080\/f\/[0-9a-f-]{36}$/);
+      const stored = await prisma.file.findUniqueOrThrow({ where: { id: res.body.id } });
+      expect(stored).toMatchObject({ ownerId: null, originalName: 'rapport.pdf', sizeBytes: BigInt(content.length) });
+      expect(stored.passwordHash).toMatch(/^\$2b\$/);
+      expect(Math.round((stored.expiresAt.getTime() - Date.now()) / DAY_MS)).toBe(2);
+      expect(existsSync(join(storageDir, stored.storagePath))).toBe(true);
+      // The link works like any other: metadata, then content once the password is given.
+      const downloadToken = tokenOf(res.body.downloadUrl);
+      await metadata(downloadToken).expect(200);
+      const downloaded = await download(downloadToken, { password: 'secret1' }).expect(200);
+      expect(downloaded.body).toEqual(content);
+    });
+
+    it('422: applies the same input checks to a visitor, and leaves no temporary file (US07)', async () => {
+      await upload({}, 'setup.exe', null).expect(422);
+      await upload({ password: '12345' }, 'rapport.pdf', null).expect(422);
+      await upload({ expiresInDays: '8' }, 'rapport.pdf', null).expect(422);
 
       expect(await prisma.file.count()).toBe(0);
+      expect(await tempFiles()).toEqual([]);
+    });
+
+    it('401: refuses an invalid token instead of storing the file as anonymous, before writing anything', async () => {
+      // Alice's token with its signature altered: what an expired or forged session looks like to the API.
+      await upload({}, 'rapport.pdf', `${token.slice(0, -2)}xx`).expect(401);
+      await upload({}, 'rapport.pdf', 'pas-un-jwt').expect(401);
+
+      expect(await prisma.file.count()).toBe(0);
+      expect(await tempFiles()).toEqual([]);
     });
 
     it('422: requires a file', async () => {
@@ -266,7 +298,14 @@ describe('Files (e2e) — US01 / US02 / US05 / US06', () => {
       expect(res.body).toEqual([]);
     });
 
-    it('401: requires a token', async () => {
+    it('200: never lists the upload of a visitor, which has no owner (US07)', async () => {
+      await upload({}, 'rapport.pdf', null).expect(201);
+
+      const res = await history({ status: 'all' }).expect(200);
+      expect(res.body).toEqual([]);
+    });
+
+    it('401: requires a token, unlike the upload', async () => {
       await request(app.getHttpServer()).get('/files').expect(401);
     });
 
@@ -301,6 +340,15 @@ describe('Files (e2e) — US01 / US02 / US05 / US06', () => {
       const bobToken = await registerBob();
 
       await remove(body.id, bobToken).expect(403);
+
+      expect(await prisma.file.count()).toBe(1);
+      await download(tokenOf(body.downloadUrl)).expect(200);
+    });
+
+    it('403: refuses to delete the upload of a visitor, which belongs to nobody (US07)', async () => {
+      const { body } = await upload({}, 'rapport.pdf', null).expect(201);
+
+      await remove(body.id).expect(403);
 
       expect(await prisma.file.count()).toBe(1);
       await download(tokenOf(body.downloadUrl)).expect(200);

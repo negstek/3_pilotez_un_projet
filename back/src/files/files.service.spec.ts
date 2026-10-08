@@ -46,7 +46,7 @@ describe('FilesService', () => {
     create.mockImplementation(({ data }: { data: object }) => Promise.resolve({ id: 'f1', ...data }));
   });
 
-  describe('upload (US01)', () => {
+  describe('upload (US01 / US07)', () => {
     it('stores the content, then returns a link to the front with an unpredictable token', async () => {
       const result = await service.upload(upload, { expiresInDays: 7 }, 'u1');
 
@@ -54,6 +54,14 @@ describe('FilesService', () => {
       const { data } = create.mock.calls[0][0];
       expect(data).toMatchObject({ ownerId: 'u1', originalName: 'rapport.pdf', storagePath: 'key-1', sizeBytes: 42, passwordHash: null });
       expect(data.downloadToken).toMatch(/^[0-9a-f-]{36}$/);
+      expect(result.downloadUrl).toBe(`https://datashare.test/f/${data.downloadToken}`);
+    });
+
+    it('stores an anonymous upload without owner, with the same link as any other (US07)', async () => {
+      const result = await service.upload(upload, { expiresInDays: 7 }, null);
+
+      const { data } = create.mock.calls[0][0];
+      expect(data).toMatchObject({ ownerId: null, originalName: 'rapport.pdf', storagePath: 'key-1' });
       expect(result.downloadUrl).toBe(`https://datashare.test/f/${data.downloadToken}`);
     });
 

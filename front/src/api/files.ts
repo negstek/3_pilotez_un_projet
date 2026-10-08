@@ -11,11 +11,11 @@ export interface UploadOptions {
 }
 
 /**
- * US01: 201 with the link to share; ApiError 401 (not logged in) or 422 (size, extension, password, duration).
+ * US01 / US07: 201 with the link to share; ApiError 401 (token sent but invalid or expired) or 422 (size, extension, password, duration).
  *
  * Sent as multipart/form-data, the file as the `file` part and the options as text fields (the back converts them).
  *
- * @param token JWT of the session; required until US07 (anonymous upload).
+ * @param token JWT of the session, which attaches the file to the user's history; `null` for a visitor, whose upload is anonymous (US07).
  */
 export function uploadFile(file: File, { password, expiresInDays }: UploadOptions, token: string | null): Promise<FileUploadResponse> {
   const form = new FormData()

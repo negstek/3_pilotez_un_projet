@@ -39,8 +39,8 @@ export interface FileDownload {
 }
 
 /**
- * Upload (US01), download through the link (US02), history (US05) and deletion (US06). The content goes through StorageService, the
- * metadata through Prisma.
+ * Upload (US01, anonymous with US07), download through the link (US02), history (US05) and deletion (US06). The content goes through
+ * StorageService, the metadata through Prisma.
  */
 @Injectable()
 export class FilesService {
@@ -58,6 +58,9 @@ export class FilesService {
   /**
    * Stores the file and its metadata, and returns the link to share. The password is hashed before anything is written, so a bcrypt
    * failure leaves nothing behind.
+   *
+   * @param ownerId Account the file belongs to, or `null` for an anonymous upload (US07): the file then appears in no history and nobody
+   *   can delete it, it only disappears when it expires. Everything else is identical, link included.
    */
   async upload(file: UploadedFileInfo, dto: UploadFileDto, ownerId: string | null): Promise<FileUploadResponse> {
     const passwordHash = dto.password ? await bcrypt.hash(dto.password, BCRYPT_ROUNDS) : null;
