@@ -1,5 +1,5 @@
 import type { AuthResponse } from '@datashare/shared-lib';
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import bcrypt from 'bcrypt';
 import { User } from '../generated/prisma/client.js';
@@ -22,6 +22,9 @@ const DUMMY_HASH = bcrypt.hashSync('timing-attack-mitigation', BCRYPT_ROUNDS);
  */
 @Injectable()
 export class AuthService {
+  // The email is personal data: only the account id is logged.
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private readonly users: UsersService,
     private readonly jwt: JwtService,
@@ -34,6 +37,7 @@ export class AuthService {
   async register({ email, password }: RegisterDto): Promise<AuthResponse> {
     const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
     const user = await this.users.create(email, passwordHash);
+    this.logger.log({ msg: 'account created', userId: user.id });
     return this.buildAuthResponse(user);
   }
 

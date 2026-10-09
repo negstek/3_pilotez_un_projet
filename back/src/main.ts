@@ -1,5 +1,6 @@
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
+import { Logger } from 'nestjs-pino';
 import type { Server } from 'node:http';
 import { AppModule } from './app.module.js';
 import { setupApp } from './setup-app.js';
@@ -11,7 +12,10 @@ const UPLOAD_TIMEOUT_MS = 60 * 60 * 1000;
  * Application entry point: builds the Nest application, applies the shared configuration and starts the HTTP server.
  */
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  // Logs of the startup are held until pino is ready, so that they come out in JSON like the rest.
+  const app = await NestFactory.create(AppModule, { bufferLogs: true });
+  // Nest's own logs (startup, routes, Logger of the services) go through pino too.
+  app.useLogger(app.get(Logger));
   setupApp(app);
   // Same configuration source as the rest of the back (.env through ConfigModule), rather than reading process.env directly.
   const config = app.get(ConfigService);

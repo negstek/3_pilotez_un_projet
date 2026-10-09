@@ -19,7 +19,12 @@
     "e2e:run": "npm run cypress:run -w front",
     "e2e:ui": "npm run cypress:open -w front",
     "lint": "npm run lint --workspaces --if-present",
-    "format": "npm run format --workspaces --if-present"
+    "format": "npm run format --workspaces --if-present",
+    "format:check": "npm run format:check --workspaces --if-present",
+    "security:audit": "npm audit --omit=dev --audit-level=high",
+    "security:trivy": "sh scripts/trivy.sh",
+    "perf": "sh scripts/perf.sh",
+    "prepare": "git rev-parse --git-dir > /dev/null 2>&1 && git config core.hooksPath .githooks || true"
   },
   "allowScripts": {
     "bcrypt@6.0.0": true,
@@ -33,5 +38,9 @@
     "istanbul-lib-report": "^3.0.1",
     "istanbul-reports": "^3.2.0",
     "start-server-and-test": "^3.0.13"
+  },
+  "overrides": {
+    "deepmerge-ts": "^8.0.2",
+    "mysql2": "^3.24.5"
   }
 }

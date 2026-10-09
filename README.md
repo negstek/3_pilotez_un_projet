@@ -99,9 +99,23 @@ Le badge en tête de ce README affiche la couverture globale des lignes sur `mai
 
 `npm run test:cov` écrit aussi le rapport HTML des tests de chaque application dans `back/.vitest/` et `front/.vitest/`, à ouvrir avec `npx vite preview --outDir .vitest` depuis le dossier de l'application.
 
-Le formatage est assuré par Prettier, avec une configuration propre à chaque package (`back/.prettierrc`, `front/.prettierrc`, `shared_lib/.prettierrc`) : `npm run format` reformate le code (depuis la racine, les trois packages), et côté front `npm run format:check` vérifie sans modifier.
+Le formatage est assuré par Prettier, avec une configuration propre à chaque package (`back/.prettierrc`, `front/.prettierrc`, `shared_lib/.prettierrc`) : `npm run format` reformate le code et `npm run format:check` vérifie sans modifier (depuis la racine, les trois packages).
 
 Les tests e2e du back utilisent une base dédiée, `datashare_test`, sur le PostgreSQL du `docker-compose.yml` (configuration dans `back/.env.test`). Elle est créée et migrée automatiquement au lancement de `npm run test:e2e`, puis vidée avant chaque test : les données de développement ne sont jamais touchées. Le plan de tests est décrit dans [TESTING.md](TESTING.md).
+
+### Hooks Git, sécurité et performance
+
+`npm install` active les hooks Git versionnés dans `.githooks/` : avant chaque commit, le lint et le formatage sont vérifiés ; avant chaque push, `npm audit` bloque sur une vulnérabilité haute ou critique d'une dépendance de production, et `npm outdated` liste les paquets en retard (pour information). La CI ([.github/workflows/quality.yml](.github/workflows/quality.yml)) rejoue ces contrôles et lance Trivy à chaque push et chaque lundi. Détail dans [MAINTENANCE.md](MAINTENANCE.md).
+
+```bash
+npm run security:audit   # npm audit des dépendances de production (seuil : haute)
+npm run security:trivy   # Trivy en Docker : dépendances, secrets, configuration, image PostgreSQL
+npm run perf             # test de charge k6 (upload / téléchargement), résultats dans perf/results/
+```
+
+Les résultats et les décisions de sécurité sont dans [SECURITY.md](SECURITY.md), le test de charge, les logs structurés et le budget du front dans [PERF.md](PERF.md).
+
+Le back écrit des logs structurés (pino) : une ligne JSON par requête avec sa durée, et les événements métier (fichier déposé, téléchargé, supprimé). `LOG_LEVEL` règle le niveau et `LOG_FORMAT=pretty` donne une sortie lisible en développement (voir `back/.env.example`).
 
 ### Analyse SonarQube
 

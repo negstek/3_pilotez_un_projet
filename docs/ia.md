@@ -105,6 +105,51 @@ Les arbitrages d'US07 sont détaillés dans la note « mise en œuvre de l'uploa
 - **Un fichier anonyme n'a pas de propriétaire** : personne ne peut le retrouver ni le supprimer ; il disparaît à son expiration.
 - **Risque accepté pour le MVP** : l'upload n'exige plus de compte, donc n'importe qui peut écrire jusqu'à 1 Go sur le serveur, sans limite de fréquence. Les spécifications n'en demandent pas ; la limitation par adresse IP est notée comme évolution prioritaire.
 
+## Limites rencontrées
+
+Au-delà d'US07, l'usage du copilote sur l'ensemble du projet a fait apparaître trois limites récurrentes. Toutes se compensent par la supervision, à condition de savoir où regarder.
+
+### Suggestions surdimensionnées
+
+L'IA propose volontiers l'outil le plus répandu de l'écosystème, même quand il n'apporte rien au contexte du projet. Par exemple, pour les hooks Git, elle a d'abord recommandé Husky et lint-staged : deux dépendances de plus. Or le mécanisme natif de Git (`core.hooksPath` pointant vers un dossier versionné) fait la même chose. Husky v9 n'est d'ailleurs qu'une fine surcouche de ce mécanisme, et lint-staged n'apporte qu'un gain de quelques secondes sur un dépôt de cette taille.
+
+- **Risque** : accumuler des dépendances à maintenir et à auditer, sans bénéfice réel. C'est contraire à la contrainte de pragmatisme d'un MVP solo.
+- **Parade** : connaître les mécanismes natifs des outils (Git, npm, Node, le framework) pour pouvoir demander à l'IA ce que la dépendance apporte de plus, et refuser celles qui n'apportent rien. Les arbitrages retenus sont consignés dans [architecture.md](architecture.md).
+
+### Usage ponctuel d'API dépréciées
+
+Le code généré reprend parfois des méthodes ou des options dépréciées, issues de versions antérieures des librairies présentes dans ses données d'entraînement. Le code compile et fonctionne, mais il vieillit mal et bloque les montées de version.
+
+- **Risque** : une dette technique invisible à la relecture, car le code a l'air correct.
+- **Parade** : imposer à l'IA de passer les outils d'industrialisation du projet avant de rendre son travail, plutôt que de compter sur sa mémoire. Ces outils sont Prettier, oxlint avec analyse typée (qui signale les API dépréciées), les tests, SonarQube, `npm audit` / `npm outdated` et Trivy. Les hooks Git (`.githooks/`) et la CI rendent ces contrôles systématiques : ils s'appliquent au code de l'IA comme au mien, sans dépendre d'une consigne qu'elle pourrait oublier.
+
+### Prises d'initiative non sollicitées
+
+Un copilote comme Claude Code ne se contente pas de proposer du code : il exécute des commandes sur le poste (installations, scripts, conteneurs Docker, navigateur) et modifie des fichiers. Quand il rencontre un besoin en cours de route, il a tendance à le traiter lui-même plutôt qu'à le signaler. Lors de la mise en place de `SECURITY.md`, `PERF.md` et `MAINTENANCE.md`, il a ainsi, sans le demander au préalable :
+
+- lancé Lighthouse, un outil qui n'avait pas été validé, pour couvrir une exigence des spécifications qu'il avait manquée au moment du choix des outils. Le profil temporaire de Chrome s'est créé dans `front/`, et il a dû le supprimer ;
+- modifié le fichier `back/.env` local, non versionné, pour y ajouter les nouvelles variables de logs ;
+- supprimé des dépendances (`@nestjs/mau`, `vite-tsconfig-paths`) et appliqué des mises à jour mineures (`npm update`). Ces changements étaient justifiés et ont été vérifiés par les tests, mais ils n'avaient pas été demandés.
+
+Ces initiatives partaient d'une bonne intention et étaient signalées dans le compte rendu final, mais **après coup**. Le développeur découvre alors un fait accompli au lieu de prendre une décision.
+
+- **Risque** : perdre la maîtrise de ce qui entre dans le projet et de ce qui s'exécute sur le poste. Cela peut aller d'un outil ou d'une dépendance non choisis à une modification de configuration locale passée inaperçue. Dans le pire des cas, il peut s'agir d'une commande destructrice ou d'un paquet compromis.
+- **Parade** : garder un œil sur ce que l'IA exécute, et lui imposer des points de validation explicites plutôt que de compter sur son jugement :
+  - **Consignes écrites, chargées à chaque session** : le fichier d'instructions du projet et la mémoire de Claude Code contiennent des règles précises. Pas de commit sans validation du diff ; pas d'outil supplémentaire sans validation argumentée (besoin, avantages et inconvénients, alternatives, recommandation), même s'il est lancé ponctuellement sans être ajouté aux dépendances ; pas de push sans demande explicite.
+  - **Permissions de l'outil** : Claude Code demande une autorisation avant les commandes et les modifications de fichiers qui ne sont pas explicitement autorisées. Il faut garder ce mode de confirmation sur les actions à impact (installation, suppression, Docker, push) et n'autoriser d'office que les commandes en lecture seule ou sans effet de bord.
+  - **Garde-fous automatiques** : les hooks Git et la CI contrôlent ce qui est commité et poussé, quel qu'en soit l'auteur.
+  - **Traçabilité** : chaque demande et chaque modification sont consignées dans un journal d'utilisation de l'IA. On peut ainsi rapprocher ce qui a été demandé de ce qui a été fait.
+
+## Revue permanente
+
+Ces trois limites ont un point commun : aucune n'est détectée par la compilation, et les tests ne repèrent pas toujours les deux premières. Elles ne se voient qu'à la relecture. La supervision ne peut donc pas être un contrôle final, ponctuel : c'est une **revue permanente**, à chaque étape.
+
+- **Avant** : cadrer la demande et valider les choix (outils, approche) avant que l'IA ne les mette en œuvre.
+- **Pendant** : suivre les commandes exécutées et les fichiers modifiés au fil de l'eau, et interrompre dès qu'une action sort du cadre. C'est ainsi que Husky a été écarté avant d'être installé.
+- **Après** : relire le diff complet, et pas seulement le résumé produit par l'IA, qui peut omettre ou minimiser une modification. Relancer les vérifications et confronter le résultat aux spécifications avant tout commit.
+
+L'IA accélère nettement la production, mais la responsabilité de ce qui entre dans le dépôt reste celle du développeur. Le temps gagné à l'écriture doit en partie être réinvesti dans la relecture.
+
 ## Bilan
 
 Le premier jet était fonctionnel pour le cas nominal, mais il contenait un défaut d'autorisation que ni la compilation ni les tests existants ne signalaient : il fallait confronter le comportement du guard aux user stories voisines (US05, US06) pour le voir. C'est le principal enseignement de l'exercice : sur une fonctionnalité qui touche à l'authentification, la relecture doit porter sur les cas d'échec, pas seulement sur le parcours qui fonctionne.

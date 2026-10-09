@@ -1,0 +1,15 @@
+#!/bin/sh
+# Git hook run before each push: dependency checks, which query the npm registry (network needed, slower than the pre-commit checks). A
+# new advisory can appear without any change in the code, which is why they run here rather than at each commit. See SECURITY.md and
+# MAINTENANCE.md; the CI runs them again (.github/workflows/quality.yml).
+set -e
+
+# Blocking: known high or critical vulnerability in a dependency shipped to production. An accepted one must be fixed (update, override)
+# or documented in SECURITY.md before pushing.
+echo "pre-push: npm audit (production dependencies, high and critical)"
+npm audit --omit=dev --audit-level=high
+
+# For information only: npm outdated exits with 1 as soon as one package is behind, which is almost always the case. Updates follow the
+# procedure of MAINTENANCE.md, not the rhythm of the pushes.
+echo "pre-push: npm outdated (for information)"
+npm outdated || true

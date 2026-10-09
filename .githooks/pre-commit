@@ -1,0 +1,11 @@
+#!/bin/sh
+# Git hook run before each commit: fast checks that need no network, on the whole repository (a few seconds). Versioned in .githooks/ and
+# activated by `npm install` ("prepare" script of package.json: `git config core.hooksPath .githooks`). The CI runs the same checks, so
+# bypassing them (`git commit --no-verify`) only postpones the failure. See MAINTENANCE.md.
+set -e
+
+echo "pre-commit: lint (oxlint, type-aware)"
+npm run --silent lint
+
+echo "pre-commit: formatting (Prettier)"
+npm run --silent format:check

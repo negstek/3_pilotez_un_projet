@@ -21,12 +21,12 @@ describe('Upload, then download through the link (US01 / US02)', () => {
     cy.contains('Félicitations, ton fichier sera conservé chez nous pendant une semaine !')
 
     cy.get('.upload-success__link')
-      .should('have.attr', 'href')
-      .and('match', /\/f\/[0-9a-f-]{36}$/)
+      .invoke('attr', 'href')
+      .should('match', /\/f\/[0-9a-f-]{36}$/)
       .then((link) => {
         // The link is public: it is opened as a visitor, once the session is forgotten.
         cy.clearLocalStorage()
-        cy.visit(String(link))
+        cy.visit(link ?? '')
       })
     cy.contains('a', 'Se connecter')
     cy.contains('.file-info', fileName)

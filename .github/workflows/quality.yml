@@ -1,0 +1,75 @@
+# Quality and security checks: the same checks as the Git hooks of .githooks/ (lint, formatting, npm audit, npm outdated), which a developer
+# can bypass with --no-verify, plus the Trivy scan. The coverage is checked by coverage.yml. See SECURITY.md and MAINTENANCE.md.
+name: Quality
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+  # Every Monday as well: a new advisory can concern a dependency that has not changed, and no push would reveal it.
+  schedule:
+    - cron: '0 6 * * 1'
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      # The lockfile and `allowScripts` of package.json are written for npm 12, more recent than the npm bundled with Node 24.
+      - run: npm install -g npm@12
+
+      # Before the install: its postinstall runs `prisma generate`, which reads DATABASE_URL from back/.env. The type-aware lint needs
+      # this generated client.
+      - name: Copy the example environment files
+        run: |
+          cp back/.env.example back/.env
+          cp front/.env.example front/.env
+
+      - run: npm ci
+        env:
+          CYPRESS_INSTALL_BINARY: 0
+
+      - name: Lint (oxlint, type-aware)
+        run: npm run lint
+
+      - name: Formatting (Prettier)
+        run: npm run format:check
+
+      # Blocking, like the pre-push hook: high or critical vulnerability in a production dependency.
+      - name: npm audit (production dependencies)
+        run: npm run security:audit
+
+      # For information, in the summary of the run: every vulnerability, dev dependencies included, and the packages behind their latest
+      # version. Reviewed following the procedure of MAINTENANCE.md.
+      - name: Dependency report
+        if: always()
+        run: |
+          {
+            echo '## npm audit (all dependencies)'
+            echo '```'
+            npm audit || true
+            echo '```'
+            echo '## npm outdated'
+            echo '```'
+            npm outdated || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  trivy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Same script as `npm run security:trivy`: Trivy in its Docker image, pinned to an exact version, rather than a third-party action.
+      - name: Trivy (dependencies, secrets, configuration, Docker images)
+        run: sh scripts/trivy.sh

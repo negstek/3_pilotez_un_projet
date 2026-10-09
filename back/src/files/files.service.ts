@@ -9,6 +9,7 @@ import {
   ForbiddenException,
   GoneException,
   Injectable,
+  Logger,
   NotFoundException,
   UnauthorizedException,
   UnprocessableEntityException,
@@ -44,6 +45,8 @@ export interface FileDownload {
  */
 @Injectable()
 export class FilesService {
+  // Business events, as JSON fields through pino (see logging/logger.config.ts). Never a name, a token or a password: only ids and sizes.
+  private readonly logger = new Logger(FilesService.name);
   private readonly frontUrl: string;
 
   constructor(
@@ -79,6 +82,14 @@ export class FilesService {
           downloadToken: randomUUID(),
           expiresAt: new Date(Date.now() + dto.expiresInDays * DAY_MS),
         },
+      });
+      this.logger.log({
+        msg: 'file uploaded',
+        fileId: created.id,
+        sizeBytes: file.size,
+        anonymous: ownerId === null,
+        passwordProtected: passwordHash !== null,
+        expiresInDays: dto.expiresInDays,
       });
       return { id: created.id, downloadUrl: this.linkTo(created.downloadToken), expiresAt: created.expiresAt.toISOString() };
     } catch (error) {
@@ -127,6 +138,7 @@ export class FilesService {
     const { count } = await this.prisma.file.deleteMany({ where: { id } });
     if (count === 0) throw new NotFoundException(FILE_NOT_FOUND_MESSAGE);
     await this.storage.remove(file.storagePath);
+    this.logger.log({ msg: 'file deleted', fileId: id });
   }
 
   /** Metadata shown on the download page before the file is fetched (US02). */
@@ -151,8 +163,13 @@ export class FilesService {
     const file = await this.findDownloadable(token);
     if (file.passwordHash !== null) {
       if (!password) throw new UnprocessableEntityException(FILE_MESSAGES.downloadPasswordRequired);
-      if (!(await bcrypt.compare(password, file.passwordHash))) throw new UnauthorizedException('Mot de passe incorrect');
+      if (!(await bcrypt.compare(password, file.passwordHash))) {
+        // Repeated on the same file, a sign of an attempt to guess its password.
+        this.logger.warn({ msg: 'wrong file password', fileId: file.id });
+        throw new UnauthorizedException('Mot de passe incorrect');
+      }
     }
+    this.logger.log({ msg: 'file downloaded', fileId: file.id, sizeBytes: Number(file.sizeBytes) });
     return {
       originalName: file.originalName,
       sizeBytes: Number(file.sizeBytes),
