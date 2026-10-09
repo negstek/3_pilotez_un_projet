@@ -7,6 +7,8 @@ import { config } from 'dotenv';
 export default defineConfig({
   plugins: [tsconfigPaths()],
   test: {
+    // Names the project in the coverage run, which combines both configurations (vitest.config.cov.ts).
+    name: 'e2e',
     globals: true,
     root: './',
     include: ['**/*.e2e-spec.ts'],

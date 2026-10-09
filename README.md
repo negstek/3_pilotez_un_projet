@@ -78,6 +78,21 @@ cd front && npm test && npm run lint
 npm test && npm run lint
 ```
 
+```bash
+# tests end-to-end Cypress, depuis la racine : démarre un back et un front dédiés, lance les scénarios, arrête tout
+npm run e2e
+# même pile, avec l'interface de Cypress
+npm run e2e:open
+
+# rapport de couverture global, depuis la racine (échoue sous 70 %) : back, y compris ses tests e2e de l'API, puis front, puis fusion
+npm run test:cov
+# ou pour une seule application
+cd back && npm run test:cov
+cd front && npm run test:cov
+```
+
+Les tests Cypress tournent sur leurs propres ports (back 3001, front `https://localhost:8081`) et sur la base de test : ils peuvent être lancés pendant une session de développement, sans toucher à ses données. Le rapport de couverture global est écrit dans `coverage/index.html` à la racine, ceux de chaque application dans `back/coverage/` et `front/coverage/`.
+
 Le formatage est assuré par Prettier, avec une configuration propre à chaque package (`back/.prettierrc`, `front/.prettierrc`, `shared_lib/.prettierrc`) : `npm run format` reformate le code (depuis la racine, les trois packages), et côté front `npm run format:check` vérifie sans modifier.
 
 Les tests e2e du back utilisent une base dédiée, `datashare_test`, sur le PostgreSQL du `docker-compose.yml` (configuration dans `back/.env.test`). Elle est créée et migrée automatiquement au lancement de `npm run test:e2e`, puis vidée avant chaque test : les données de développement ne sont jamais touchées. Le plan de tests est décrit dans [TESTING.md](TESTING.md).

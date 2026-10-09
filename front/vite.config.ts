@@ -3,6 +3,11 @@ import basicSsl from '@vitejs/plugin-basic-ssl'
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 
+// Overridden by the Cypress scripts (`npm run e2e` at the repository root) to start a second stack next to the development one: front on
+// 8081, proxying to a back on 3001 that uses the test database.
+const port = Number(process.env.FRONT_PORT ?? 8080)
+const apiProxyTarget = process.env.API_PROXY_TARGET ?? 'http://localhost:3000'
+
 // https://vite.dev/config/
 export default defineConfig({
   // basicSsl: serves the dev server over HTTPS with a self-signed certificate generated on first start (the browser asks once to accept
@@ -18,15 +23,24 @@ export default defineConfig({
   // on the loopback, the way the production reverse proxy will. Being same-origin, the API needs no CORS. `vite preview` reuses this proxy.
   server: {
     host: true,
-    port: 8080,
+    port,
     strictPort: true,
     proxy: {
-      '/api': { target: 'http://localhost:3000', rewrite: (path) => path.replace(/^\/api/, '') },
+      '/api': { target: apiProxyTarget, rewrite: (path) => path.replace(/^\/api/, '') },
     },
   },
   // Vitest: component tests run in a simulated DOM (jsdom).
   test: {
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
+    // `npm run test:cov`. Every source file counts, including the ones no test loads (otherwise they would simply be missing from the
+    // report), and the command fails under the 70 % required by the specifications.
+    coverage: {
+      include: ['src/**/*.{ts,tsx}'],
+      // Test code and helpers, type declarations, and the entry point (mounts <App /> in the page, no logic).
+      exclude: ['src/**/*.test.{ts,tsx}', 'src/test/**', 'src/**/*.d.ts', 'src/main.tsx'],
+      reporter: ['text', 'html', 'json'],
+      thresholds: { statements: 70, branches: 70, functions: 70, lines: 70 },
+    },
   },
 })

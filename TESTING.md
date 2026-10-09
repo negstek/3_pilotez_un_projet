@@ -2,20 +2,52 @@
 
 Document vivant, complété à chaque fonctionnalité livrée. Les choix d'outils sont justifiés dans [docs/architecture.md](docs/architecture.md) (tableau de synthèse et note « simulation des appels API dans les tests front »).
 
-## Fonctionnalités critiques
+## Fonctionnalités critiques et critères d'acceptation
 
 Une fonctionnalité est critique quand une défaillance compromet la sécurité des données ou bloque le parcours principal (déposer un fichier, partager le lien, le télécharger). Elles sont testées en priorité, à tous les niveaux pertinents.
 
-| Fonctionnalité | US | Pourquoi elle est critique | État |
-|---|---|---|---|
-| Création de compte | US03 | Unicité de l'email, mot de passe jamais stocké en clair | Testée |
-| Connexion et émission du JWT | US04 | Porte d'entrée de toutes les routes protégées | Testée |
-| Protection des routes par JWT | US04 | Empêche l'accès aux fichiers d'un autre utilisateur | Testée (`GET /auth/me`, routes des fichiers) |
-| Authentification optionnelle de l'upload | US07 | Un token invalide ne doit pas produire un fichier sans propriétaire ; un fichier anonyme ne doit être listé ni supprimable par personne | Testée |
-| Upload avec contrôles (taille, extensions interdites, expiration, mot de passe) | US01, US07, US10 | Parcours principal ; refuse les fichiers dangereux | Testée, avec et sans compte |
-| Téléchargement par lien (lien inconnu, expiré, mot de passe) | US02, US09 | Parcours principal ; seul accès public aux fichiers | Testée |
-| Historique et suppression limités au propriétaire | US05, US06 | Confidentialité des fichiers entre utilisateurs | Testée |
-| Purge des fichiers expirés | US10 | Les fichiers ne doivent pas survivre à leur expiration | À venir |
+Types de test : **U** = unitaire (Vitest, back et front), **C** = composant React (React Testing Library), **I** = intégration de l'API (Supertest sur l'application complète et une base PostgreSQL de test), **E2E** = end-to-end dans un navigateur (Cypress, front et back réels).
+
+| Fonctionnalité critique | US | Types de test | Critères d'acceptation | État |
+|---|---|---|---|---|
+| Création de compte | US03 | U, C, I, E2E | Email valide et mot de passe d'au moins 8 caractères : `201`, l'utilisateur arrive connecté sur son espace. Email déjà utilisé : `409`. Saisie invalide : `422`, erreur sous le champ. Le mot de passe n'est stocké que sous forme de hash bcrypt. | Validé |
+| Connexion et émission du JWT | US04 | U, C, I, E2E | Identifiants valides : `200`, JWT émis, espace personnel ouvert, session conservée après rechargement. Mot de passe faux ou compte inconnu : `401` avec le même message. | Validé |
+| Protection des routes par JWT | US04 | U, C, I, E2E | Sans token, ou avec un token falsifié ou expiré : `401`. Un visiteur qui ouvre l'espace personnel est renvoyé vers la connexion. | Validé |
+| Upload avec contrôles, avec ou sans compte | US01, US07, US10 | U, C, I, E2E | Fichier accepté : `201` et lien unique, expiration à 7 jours par défaut. Plus de 1 Go, extension interdite, mot de passe de moins de 6 caractères, durée hors de 1 à 7 jours : `422`. Sans compte : mêmes règles, fichier sans propriétaire. Token invalide : `401`, aucun fichier créé. | Validé |
+| Téléchargement par lien | US02, US09 | U, C, I, E2E | Le fichier téléchargé est identique au fichier déposé, sous son nom d'origine, sans compte. Lien inconnu : `404`. Lien expiré : `410`. Fichier protégé : mot de passe absent `422`, faux `401`, correct `200`. | Validé |
+| Historique et suppression limités au propriétaire | US05, US06 | U, C, I | Un utilisateur ne voit que ses fichiers. Suppression : `204`, fichier retiré de la base et du disque, lien en `404`. Fichier d'un autre utilisateur ou d'un visiteur : `403`. | Validé |
+| Purge des fichiers expirés | US10 | Aucun | Les fichiers expirés sont supprimés chaque jour (base et disque). | Non implémentée (US optionnelle) ; un lien expiré est déjà refusé en `410` |
+
+Critères communs : tous les tests passent avant chaque commit poussé sur `main`, et la couverture reste au-dessus de 70 % (seuil des spécifications), faute de quoi `npm run test:cov` échoue.
+
+## Résultats
+
+Relevés le 2026-10-08, sur le commit en cours.
+
+| Suite | Commande | Résultat |
+|---|---|---|
+| Unitaires `shared_lib` | `npm test -w @datashare/shared-lib` | 10 tests réussis sur 10 |
+| Unitaires back | `cd back && npm test` | 68 tests réussis sur 68 |
+| Intégration de l'API | `cd back && npm run test:e2e` | 43 tests réussis sur 43 |
+| Unitaires et composants front | `cd front && npm test` | 72 tests réussis sur 72 |
+| End-to-end Cypress | `npm run e2e` (racine) | 3 scénarios réussis sur 3 |
+
+### Rapport de couverture
+
+| | Instructions | Branches | Fonctions | Lignes | Seuil |
+|---|---|---|---|---|---|
+| Back (`cd back && npm run test:cov`) | 100 % | 83,78 % | 100 % | 100 % | 70 % |
+| Front (`cd front && npm run test:cov`) | 91,69 % | 90,69 % | 87,75 % | 93,66 % | 70 % |
+| **Global** (`npm run test:cov` à la racine) | 94,2 % | 88,92 % | 91,89 % | 95,62 % | 70 % |
+
+`npm run test:cov` affiche le détail par fichier et écrit le rapport HTML dans `coverage/index.html`. À la racine, la commande lance celle du back puis celle du front, fusionne leurs deux rapports (`scripts/coverage-global.mjs`) et écrit le rapport global dans `coverage/index.html` à la racine ; les rapports par package restent dans `back/coverage/` et `front/coverage/`. Elle échoue si l'une des quatre mesures passe sous 70 %, par package comme au global.
+
+Périmètre de la mesure :
+
+- Tous les fichiers source comptent, y compris ceux qu'aucun test ne charge. Sont exclus le client Prisma généré, les fichiers de test, les points d'entrée (`main.ts`, `main.tsx`) et les modules Nest, qui ne contiennent que du câblage.
+- Côté back, la couverture additionne les tests unitaires et les tests d'intégration de l'API : les contrôleurs, les guards et la stratégie JWT ne sont exercés que par des requêtes HTTP. Avec les seuls tests unitaires, les fonctions seraient couvertes à 56 %. La commande a donc besoin du PostgreSQL de `docker-compose`.
+- Les scénarios Cypress ne sont pas comptés dans la couverture.
+- `shared_lib` n'est pas mesuré : le back et le front l'utilisent sous sa forme compilée, et il ne contient presque que des types et des constantes.
 
 ## Tests en place
 
@@ -61,13 +93,29 @@ Le package partagé `shared_lib` (`@datashare/shared-lib`) contient surtout des 
 - `src/pages/my-files/MyFilesPage.test.tsx` : fichiers actifs affichés par défaut avec taille, dates, cadenas et lien « Accéder » ; rechargement avec le filtre choisi, fichier expiré sans action ; liste vide ; suppression seulement après confirmation, puis retrait de la liste ; message de l'API en cas d'échec (fichier déjà supprimé retiré de la liste) ; retour à la connexion quand la session a expiré côté serveur ; déconnexion.
 - `src/api/client.test.ts` couvre aussi l'envoi d'un formulaire multipart, la réception d'un fichier binaire et la réponse `204` sans corps.
 
-## Critères d'acceptation
+### End-to-end (Cypress) — `npm run e2e` à la racine
 
-- Tous les tests passent avant chaque commit poussé sur `main`.
-- Chaque fonctionnalité critique est couverte par au moins un test unitaire et un test e2e API sur ses cas nominaux et ses cas d'erreur du contrat d'API.
-- Couverture visée : 70 % (objectif des spécifications), mesurée par `npm run test:cov` dans `back/` et `front/`.
+La commande démarre une pile dédiée, à côté de celle de développement : le back sur le port 3001 avec la base `datashare_test` et le stockage `storage-test`, le front sur `https://localhost:8081`. Elle lance ensuite les scénarios dans un navigateur sans interface, puis arrête les deux serveurs. `npm run e2e:open` ouvre l'interface de Cypress sur la même pile. Chaque scénario crée son propre compte, avec un email unique : ils ne dépendent ni les uns des autres ni du contenu de la base.
 
-## À venir
+- `front/cypress/e2e/register.cy.ts` : inscription par le formulaire, puis arrivée sur l'espace personnel (US03).
+- `front/cypress/e2e/login.cy.ts` : un visiteur qui ouvre l'espace personnel est renvoyé vers la connexion, se connecte, arrive sur son espace et y reste après un rechargement de la page (US04).
+- `front/cypress/e2e/upload-download.cy.ts` : un utilisateur connecté téléverse un fichier et obtient son lien ; le lien est ouvert sans session, le fichier est téléchargé et son contenu est comparé à celui d'origine (US01, US02).
 
-- Scénarios end-to-end Cypress sur les parcours critiques.
-- Rapport de couverture (capture d'écran) une fois le MVP complet.
+#### Cypress Studio
+
+Cypress Studio enregistre les actions faites dans le navigateur (clics, saisies, sélections) et les convertit en commandes Cypress, écrites directement dans le fichier de test. Pour le démarrer, depuis la racine du dépôt :
+
+```bash
+npm run e2e:open
+```
+
+La commande démarre le back et le front de test, puis ouvre l'interface de Cypress : choisir « E2E Testing » et un navigateur, lancer un fichier de test, puis cliquer sur la baguette magique affichée au survol d'un test (« Add commands to test ») ou d'un `describe` (« Add new test »). « Save Commands » écrit les commandes dans le fichier `.cy.ts`.
+
+Intérêts pour le développeur :
+
+- **Écrire le premier jet d'un scénario plus vite** : le parcours est joué une fois à la main, sans chercher chaque sélecteur ni relancer le test à chaque étape.
+- **Prolonger un test existant** à partir de l'état où il s'arrête (compte créé, fichier téléversé), sans rejouer le début à la main.
+- **Trouver un sélecteur** pour un élément de l'interface.
+- **Reproduire un bug sous forme de test**, en rejouant les actions qui le déclenchent.
+
+Le code généré reste un brouillon, à relire avant de le garder : Studio choisit parfois des sélecteurs fragiles (classes CSS, position dans la page), n'ajoute que les assertions qu'on lui demande, et ignore les fonctions partagées de `cypress/support/` (compte à email unique).

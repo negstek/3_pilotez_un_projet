@@ -11,6 +11,13 @@
     "postinstall": "npm run build -w @datashare/shared-lib",
     "build": "npm run build --workspaces",
     "test": "npm test --workspaces --if-present",
+    "test:cov": "npm run test:cov -w back -w front && node scripts/coverage-global.mjs",
+    "e2e": "START_SERVER_AND_TEST_INSECURE=1 start-server-and-test e2e:back tcp:localhost:3001 e2e:front https-get://localhost:8081 e2e:run",
+    "e2e:open": "START_SERVER_AND_TEST_INSECURE=1 start-server-and-test e2e:back tcp:localhost:3001 e2e:front https-get://localhost:8081 e2e:ui",
+    "e2e:back": "npm run start:e2e -w back",
+    "e2e:front": "npm run dev:e2e -w front",
+    "e2e:run": "npm run cypress:run -w front",
+    "e2e:ui": "npm run cypress:open -w front",
     "lint": "npm run lint --workspaces --if-present",
     "format": "npm run format --workspaces --if-present"
   },
@@ -18,6 +25,13 @@
     "bcrypt@6.0.0": true,
     "prisma@7.10.0": true,
     "@prisma/engines@7.10.0": true,
+    "cypress@16.1.1": true,
     "msw": false
+  },
+  "devDependencies": {
+    "istanbul-lib-coverage": "^3.2.2",
+    "istanbul-lib-report": "^3.0.1",
+    "istanbul-reports": "^3.2.0",
+    "start-server-and-test": "^3.0.13"
   }
 }

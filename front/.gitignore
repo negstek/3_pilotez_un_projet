@@ -25,3 +25,8 @@ dist-ssr
 
 # Coverage report (npm run test:cov)
 coverage
+
+# Cypress outputs (npm run e2e): files downloaded by the tests, screenshots of failures
+cypress/downloads
+cypress/screenshots
+cypress/videos
