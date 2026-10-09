@@ -49,6 +49,16 @@ Périmètre de la mesure :
 - Les scénarios Cypress ne sont pas comptés dans la couverture.
 - `shared_lib` n'est pas mesuré : le back et le front l'utilisent sous sa forme compilée, et il ne contient presque que des types et des constantes.
 
+### Badge de couverture
+
+Le badge en tête du [README](README.md) affiche la couverture **globale des lignes** mesurée sur `main`. Il est tenu à jour par le workflow GitHub Actions `.github/workflows/coverage.yml` :
+
+1. À chaque push sur `main` (et sur chaque pull request, sans publication), le workflow démarre un PostgreSQL identique à celui de `docker-compose.yml`, installe les dépendances et lance `npm run test:cov`. Il échoue donc sous 70 %, comme la commande en local.
+2. `scripts/coverage-global.mjs` écrit, en plus du rapport, `coverage/badge.json` : le pourcentage et la couleur du badge (rouge sous 70 %, jaune sous 80 %, vert sous 90 %, vert vif au-delà).
+3. Sur `main`, ce fichier est poussé dans la branche `badges` du dépôt, qui ne contient que lui (`coverage.json`, un seul commit remplacé à chaque exécution). shields.io le lit pour dessiner le badge.
+
+Le chiffre n'est publié que si le workflow réussit : après un échec, le badge garde la valeur du dernier succès, et l'échec se voit dans l'onglet Actions (le badge y mène). Un changement de couverture apparaît après quelques minutes, le temps des caches de GitHub et de shields.io.
+
 ## Tests en place
 
 Tous les tests unitaires (back et front) se lancent d'un coup depuis la racine du dépôt avec `npm test`, après un `npm install` à la racine (monorepo npm workspaces). Les commandes ci-dessous lancent les tests d'une seule application.

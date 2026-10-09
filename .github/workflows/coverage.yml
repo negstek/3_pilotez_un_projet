@@ -1,0 +1,72 @@
+# Runs the global coverage report (`npm run test:cov`: back unit + e2e API tests, front tests, merge) and publishes the figure displayed by
+# the coverage badge of the README. The job fails under the 70 % required by the specifications, like the command does locally.
+name: Coverage
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# Needed to push the badge data to the `badges` branch.
+permissions:
+  contents: write
+
+jobs:
+  coverage:
+    runs-on: ubuntu-latest
+    # Same PostgreSQL as docker-compose.yml, with its default credentials: the e2e API tests create and migrate `datashare_test` on it.
+    services:
+      db:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: datashare
+          POSTGRES_PASSWORD: datashare
+          POSTGRES_DB: datashare
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U datashare"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      # The lockfile and `allowScripts` of package.json are written for npm 12, more recent than the npm bundled with Node 24.
+      - run: npm install -g npm@12
+
+      # Before the install: its postinstall runs `prisma generate`, which reads DATABASE_URL from back/.env.
+      - name: Copy the example environment files
+        run: |
+          cp back/.env.example back/.env
+          cp front/.env.example front/.env
+
+      - run: npm ci
+        env:
+          # The Cypress scenarios are not part of the coverage: no need to download the browser binary.
+          CYPRESS_INSTALL_BINARY: 0
+
+      - run: npm run test:cov
+
+      # The badge of the README is rendered by shields.io from this JSON file, the only content of the `badges` branch (a single commit,
+      # replaced at each run), so the figure never has to be committed on `main`.
+      - name: Publish the badge data
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir badges
+          cp coverage/badge.json badges/coverage.json
+          cd badges
+          git init --quiet --initial-branch=badges
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add coverage.json
+          git commit --quiet --message "chore: coverage badge data of ${GITHUB_SHA}"
+          git push --force "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" badges

@@ -1,6 +1,6 @@
 // Global coverage report (`npm run test:cov` at the repository root): merges the reports that the back and the front have just written
-// (coverage/coverage-final.json, Istanbul format) into a single one, printed and written as HTML in coverage/ at the root.
-import { readFileSync } from 'node:fs';
+// (coverage/coverage-final.json, Istanbul format) into a single one, printed and written as HTML in coverage/ at the root, along with the data of the coverage badge.
+import { readFileSync, writeFileSync } from 'node:fs';
 import libCoverage from 'istanbul-lib-coverage';
 import libReport from 'istanbul-lib-report';
 import reports from 'istanbul-reports';
@@ -20,6 +20,13 @@ const context = libReport.createContext({ dir: 'coverage', coverageMap });
 for (const reporter of ['text', 'html']) reports.create(reporter).execute(context);
 
 const summary = coverageMap.getCoverageSummary();
+
+// Data of the coverage badge of the README (shields.io "endpoint" format), published by the CI (.github/workflows/coverage.yml). The line
+// coverage is the figure displayed, as coverage badges usually do.
+const lines = summary.lines.pct;
+const color = lines < THRESHOLD ? 'red' : lines < 80 ? 'yellow' : lines < 90 ? 'green' : 'brightgreen';
+writeFileSync('coverage/badge.json', JSON.stringify({ schemaVersion: 1, label: 'coverage', message: `${lines}%`, color }));
+
 const failed = ['statements', 'branches', 'functions', 'lines'].filter((metric) => summary[metric].pct < THRESHOLD);
 if (failed.length > 0) {
   console.error(`Global coverage under ${THRESHOLD} % for: ${failed.join(', ')}`);
