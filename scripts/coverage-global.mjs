@@ -17,7 +17,8 @@ for (const pkg of ['back', 'front']) {
 coverageMap.filter((file) => Object.keys(coverageMap.fileCoverageFor(file).s).length > 0);
 
 const context = libReport.createContext({ dir: 'coverage', coverageMap });
-for (const reporter of ['text', 'html']) reports.create(reporter).execute(context);
+// `json-summary` (coverage/coverage-summary.json) feeds the home page of the published report (scripts/report-site.mjs).
+for (const reporter of ['text', 'html', 'json-summary']) reports.create(reporter).execute(context);
 
 const summary = coverageMap.getCoverageSummary();
 

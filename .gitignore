@@ -3,6 +3,10 @@
 **/dist
 **/build
 **/coverage
+# Rapport HTML des tests (reporter html de Vitest, écrit par npm run test:cov)
+**/.vitest
+# Pages publiées sur GitHub Pages par la CI (scripts/report-site.mjs)
+/site
 
 # Variables d'environnement
 .env

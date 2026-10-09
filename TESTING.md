@@ -49,15 +49,28 @@ Périmètre de la mesure :
 - Les scénarios Cypress ne sont pas comptés dans la couverture.
 - `shared_lib` n'est pas mesuré : le back et le front l'utilisent sous sa forme compilée, et il ne contient presque que des types et des constantes.
 
-### Badge de couverture
+### Badge de couverture et rapport en ligne
 
-Le badge en tête du [README](README.md) affiche la couverture **globale des lignes** mesurée sur `main`. Il est tenu à jour par le workflow GitHub Actions `.github/workflows/coverage.yml` :
+Le badge en tête du [README](README.md) affiche la couverture **globale des lignes** mesurée sur `main`. Il ouvre le rapport en ligne, publié sur GitHub Pages : https://negstek.github.io/3_pilotez_un_projet/
 
-1. À chaque push sur `main` (et sur chaque pull request, sans publication), le workflow démarre un PostgreSQL identique à celui de `docker-compose.yml`, installe les dépendances et lance `npm run test:cov`. Il échoue donc sous 70 %, comme la commande en local.
-2. `scripts/coverage-global.mjs` écrit, en plus du rapport, `coverage/badge.json` : le pourcentage et la couleur du badge (rouge sous 70 %, jaune sous 80 %, vert sous 90 %, vert vif au-delà).
-3. Sur `main`, ce fichier est poussé dans la branche `badges` du dépôt, qui ne contient que lui (`coverage.json`, un seul commit remplacé à chaque exécution). shields.io le lit pour dessiner le badge.
+| Page | Contenu | Source |
+|---|---|---|
+| Accueil | Les quatre mesures de la couverture globale face au seuil de 70 %, date et commit du rapport | `scripts/report-site.mjs` |
+| `coverage/` | Couverture globale, fichier par fichier et ligne par ligne | `coverage/` à la racine (`scripts/coverage-global.mjs`) |
+| `tests/back/` | Résultat et durée de chaque test unitaire et d'intégration du back, avec son code | `back/.vitest/` (reporter `html` de Vitest) |
+| `tests/front/` | Résultat et durée de chaque test unitaire et de composant du front, avec son code | `front/.vitest/` (reporter `html` de Vitest) |
 
-Le chiffre n'est publié que si le workflow réussit : après un échec, le badge garde la valeur du dernier succès, et l'échec se voit dans l'onglet Actions (le badge y mène). Un changement de couverture apparaît après quelques minutes, le temps des caches de GitHub et de shields.io.
+Le tout est tenu à jour par le workflow GitHub Actions `.github/workflows/coverage.yml` :
+
+1. À chaque push sur `main` (et sur chaque pull request, sans publication), le workflow démarre un PostgreSQL identique à celui de `docker-compose.yml`, installe les dépendances et lance `npm run test:cov`. Si la couverture passait sous 70 %, la commande sortirait en erreur et le workflow échouerait, comme en local.
+2. `npm run test:cov` écrit, en plus des rapports de couverture, le rapport HTML des tests de chaque application (`.vitest/`) et `coverage/badge.json` : le pourcentage et la couleur du badge (rouge sous 70 %, jaune sous 80 %, vert sous 90 %, vert vif au-delà).
+3. Sur `main`, `scripts/report-site.mjs` rassemble ces fichiers dans `site/`, que le workflow pousse dans la branche `gh-pages` du dépôt (un seul commit, remplacé à chaque exécution). GitHub Pages sert cette branche, et shields.io y lit `coverage.json` pour dessiner le badge.
+
+Le rapport n'est publié que si le workflow réussit : après un échec, le badge et les pages gardent l'état du dernier succès, et l'échec se voit dans l'onglet Actions du dépôt. Un changement apparaît après quelques minutes, le temps de la publication par GitHub Pages et des caches de shields.io.
+
+Les scénarios Cypress ne sont pas exécutés par le workflow : ils n'apparaissent pas dans le rapport en ligne et se lancent en local (`npm run e2e`).
+
+En local, les mêmes rapports de tests s'ouvrent après `npm run test:cov` avec `npx vite preview --outDir .vitest`, depuis `back/` ou `front/`.
 
 ## Tests en place
 

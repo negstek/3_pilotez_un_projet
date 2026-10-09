@@ -1,5 +1,6 @@
-# Runs the global coverage report (`npm run test:cov`: back unit + e2e API tests, front tests, merge) and publishes the figure displayed by
-# the coverage badge of the README. The job fails under the 70 % required by the specifications, like the command does locally.
+# Runs the global coverage report (`npm run test:cov`: back unit + e2e API tests, front tests, merge) and publishes it on GitHub Pages,
+# with the results of the tests and the figure displayed by the coverage badge of the README. The job fails under the 70 % required by the
+# specifications, like the command does locally.
 name: Coverage
 
 on:
@@ -8,7 +9,7 @@ on:
   pull_request:
   workflow_dispatch:
 
-# Needed to push the badge data to the `badges` branch.
+# Needed to push the report to the `gh-pages` branch.
 permissions:
   contents: write
 
@@ -54,19 +55,19 @@ jobs:
 
       - run: npm run test:cov
 
-      # The badge of the README is rendered by shields.io from this JSON file, the only content of the `badges` branch (a single commit,
-      # replaced at each run), so the figure never has to be committed on `main`.
-      - name: Publish the badge data
+      # Published on GitHub Pages from the `gh-pages` branch, which holds nothing else (a single commit, replaced at each run), so no
+      # generated file ever has to be committed on `main`. The badge of the README is rendered by shields.io from the coverage.json of
+      # this branch, and opens these pages.
+      - name: Publish the report and the badge data
         if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          mkdir badges
-          cp coverage/badge.json badges/coverage.json
-          cd badges
-          git init --quiet --initial-branch=badges
+          node scripts/report-site.mjs
+          cd site
+          git init --quiet --initial-branch=gh-pages
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add coverage.json
-          git commit --quiet --message "chore: coverage badge data of ${GITHUB_SHA}"
-          git push --force "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" badges
+          git add --all
+          git commit --quiet --message "chore: test and coverage report of ${GITHUB_SHA}"
+          git push --force "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" gh-pages

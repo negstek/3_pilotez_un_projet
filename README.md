@@ -1,6 +1,6 @@
 # DataShare
 
-[![Couverture de tests](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/negstek/3_pilotez_un_projet/badges/coverage.json)](https://github.com/negstek/3_pilotez_un_projet/actions/workflows/coverage.yml)
+[![Couverture de tests](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/negstek/3_pilotez_un_projet/gh-pages/coverage.json)](https://negstek.github.io/3_pilotez_un_projet/)
 
 Prototype de partage de fichiers (upload, téléchargement par lien, historique, protection par mot de passe, expiration automatique). Voir [docs/architecture.md](docs/architecture.md) pour l'architecture détaillée et [docs/mcd.md](docs/mcd.md) pour le modèle de données.
 
@@ -95,7 +95,9 @@ cd front && npm run test:cov
 
 Les tests Cypress tournent sur leurs propres ports (back 3001, front `https://localhost:8081`) et sur la base de test : ils peuvent être lancés pendant une session de développement, sans toucher à ses données. Le rapport de couverture global est écrit dans `coverage/index.html` à la racine, ceux de chaque application dans `back/coverage/` et `front/coverage/`.
 
-Le badge en tête de ce README affiche la couverture globale des lignes sur `main`. Il est mis à jour par GitHub Actions ([.github/workflows/coverage.yml](.github/workflows/coverage.yml)), qui relance `npm run test:cov` à chaque push : voir « Badge de couverture » dans [TESTING.md](TESTING.md).
+Le badge en tête de ce README affiche la couverture globale des lignes sur `main` et ouvre le [rapport en ligne](https://negstek.github.io/3_pilotez_un_projet/) : couverture fichier par fichier et résultat de chaque test du back et du front. Les deux sont mis à jour par GitHub Actions ([.github/workflows/coverage.yml](.github/workflows/coverage.yml)), qui relance `npm run test:cov` à chaque push : voir « Badge de couverture et rapport en ligne » dans [TESTING.md](TESTING.md).
+
+`npm run test:cov` écrit aussi le rapport HTML des tests de chaque application dans `back/.vitest/` et `front/.vitest/`, à ouvrir avec `npx vite preview --outDir .vitest` depuis le dossier de l'application.
 
 Le formatage est assuré par Prettier, avec une configuration propre à chaque package (`back/.prettierrc`, `front/.prettierrc`, `shared_lib/.prettierrc`) : `npm run format` reformate le code (depuis la racine, les trois packages), et côté front `npm run format:check` vérifie sans modifier.
 
