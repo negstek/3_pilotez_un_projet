@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>DataShare — tests et couverture</title>
+    <style>
+      :root { color-scheme: light dark; --ok: #1a7f37; --ko: #cf222e; --border: #8884; }
+      @media (prefers-color-scheme: dark) { :root { --ok: #3fb950; --ko: #f85149; } }
+      body { font-family: system-ui, sans-serif; line-height: 1.5; max-width: 44rem; margin: 0 auto; padding: 2rem 1rem; }
+      table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
+      th, td { text-align: left; padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--border); }
+      td { font-variant-numeric: tabular-nums; }
+      .ok { color: var(--ok); font-weight: 600; }
+      .ko { color: var(--ko); font-weight: 600; }
+      li { margin: 0.4rem 0; }
+      footer { margin-top: 2rem; font-size: 0.875rem; opacity: 0.75; }
+    </style>
+  </head>
+  <body>
+    <h1>DataShare — tests et couverture</h1>
+    <p>Rapport de la branche <code>main</code>, généré le 10 octobre 2026, commit <a href="https://github.com/negstek/3_pilotez_un_projet/commit/989819a3fc20c9dc09e48a7f285942fbe2694526"><code>989819a</code></a>.</p>
+
+    <h2>Couverture globale (back + front)</h2>
+    <table>
+      <thead>
+        <tr><th scope="col">Mesure</th><th scope="col">Couverture</th><th scope="col">Couvert / total</th></tr>
+      </thead>
+      <tbody>
+          <tr><th scope="row">Instructions</th><td class="ok">94,45 %</td><td>494 / 523</td></tr>
+          <tr><th scope="row">Branches</th><td class="ok">89,36 %</td><td>269 / 301</td></tr>
+          <tr><th scope="row">Fonctions</th><td class="ok">92,25 %</td><td>143 / 155</td></tr>
+          <tr><th scope="row">Lignes</th><td class="ok">95,82 %</td><td>436 / 455</td></tr>
+      </tbody>
+    </table>
+    <p>Seuil exigé par les spécifications : 70 % sur chaque mesure.</p>
+    <ul>
+      <li><a href="coverage/">Détail de la couverture, fichier par fichier</a></li>
+    </ul>
+
+    <h2>Détail des tests</h2>
+    <ul>
+      <li><a href="tests/back/">Tests du back</a> : unitaires et intégration de l'API (Vitest, Supertest)</li>
+      <li><a href="tests/front/">Tests du front</a> : unitaires et composants (Vitest, React Testing Library)</li>
+    </ul>
+    <p>Les scénarios end-to-end Cypress ne sont pas exécutés par l'intégration continue : ils n'apparaissent pas ici.</p>
+
+    <footer>Le périmètre de la mesure et le plan de tests sont décrits dans TESTING.md, à la racine du dépôt.</footer>
+  </body>
+</html>
