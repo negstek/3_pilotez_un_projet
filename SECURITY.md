@@ -67,7 +67,7 @@ Les arbitrages détaillés sont dans [docs/architecture.md](docs/architecture.md
 | Accès au fichier d'autrui | Le propriétaire vient toujours du token, jamais de la requête ; suppression limitée à ses propres fichiers (403) | US05, US06 |
 | Lien deviné ou énuméré | Token de téléchargement UUID v4 (122 bits aléatoires), distinct de l'identifiant du fichier | US02 |
 | Fichier malveillant | Extensions exécutables refusées (`.exe`, `.bat`, `.sh`…) ; téléchargement toujours en `application/octet-stream` avec `X-Content-Type-Options: nosniff`, pour que le navigateur n'exécute jamais un HTML ou un SVG déposé | US01 |
-| Saturation du disque | Taille limitée à 1 Go, reçue en flux et interrompue au dépassement ; lien refusé dès l'expiration, purge quotidienne prévue avec US10 | US01, US10 |
+| Saturation du disque | Taille limitée à 1 Go, reçue en flux et interrompue au dépassement ; lien refusé dès l'expiration. Risque résiduel : la purge quotidienne d'US10 n'est pas réalisée, les fichiers expirés restent sur le disque (cf. `MAINTENANCE.md`) | US01, US10 |
 | Champs inattendus dans les requêtes | `ValidationPipe` en liste blanche (`whitelist`) : les propriétés non déclarées sont retirées | toutes |
 | Interception | HTTPS jusqu'au proxy dès le développement ; mot de passe de fichier envoyé dans le corps d'un POST, jamais dans l'URL | note « HTTPS en développement » |
 | Fuite de données par les logs | Champs journalisés listés explicitement (jamais `Authorization`, cookie ni corps de requête), token de téléchargement tronqué à 8 caractères, aucun email (seulement des identifiants) | note « logs structurés » |

@@ -20,6 +20,16 @@ Le dépôt est un monorepo **npm workspaces** (`package.json` à la racine) : le
 
 ## Installation
 
+Un script fait toute l'installation, depuis la racine du dépôt :
+
+```bash
+sh scripts/install.sh
+```
+
+Il vérifie les prérequis, crée les fichiers `.env` à partir des exemples (un fichier existant n'est jamais écrasé) et écrit un `JWT_SECRET` aléatoire dans un `back/.env` qu'il vient de créer. Il installe ensuite les dépendances (`npm ci`), démarre PostgreSQL, applique les migrations et compile les trois packages. Il peut être relancé sans risque, par exemple après un `git pull`. La partie base de données se relance seule avec `npm run db:setup` ([scripts/setup-db.sh](scripts/setup-db.sh)).
+
+Les mêmes étapes, à la main :
+
 1. Copier les fichiers d'environnement d'exemple :
 
    ```bash

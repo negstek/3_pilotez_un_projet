@@ -8,6 +8,8 @@
     "front"
   ],
   "scripts": {
+    "setup": "sh scripts/install.sh",
+    "db:setup": "sh scripts/setup-db.sh",
     "postinstall": "npm run build -w @datashare/shared-lib",
     "build": "npm run build --workspaces",
     "test": "npm test --workspaces --if-present",

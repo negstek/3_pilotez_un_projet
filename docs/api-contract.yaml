@@ -2,10 +2,10 @@ openapi: 3.0.3
 info:
   title: DataShare API
   description: |
-    Contrat d'interface entre le front-end (React) et le back-end (NestJS) du prototype DataShare. Périmètre : MVP (US01 à US06) et fonctionnalités avancées optionnelles implémentées (US07 upload anonyme, US08 gestion des tags, US09 mot de passe fichier, US10 expiration automatique).
+    Contrat d'interface entre le front-end (React) et le back-end (NestJS) du prototype DataShare. Périmètre : MVP (US01 à US06) et fonctionnalités avancées optionnelles implémentées (US07 upload anonyme, US09 mot de passe fichier, durée d'expiration d'US10). Non réalisées, donc absentes de ce contrat : la gestion des tags (US08) et la purge quotidienne des fichiers expirés (US10) ; un lien expiré est refusé (410) mais le fichier reste stocké.
 
     Codes d'erreur (cf. note « codes d'erreur HTTP » de docs/architecture.md) : toute violation d'un « contrôle de saisie » des spécifications renvoie 422 ; 400 est réservé à une requête illisible (corps JSON ou multipart mal formé). Chaque erreur porte un message explicite, lisible par l'utilisateur, dans le champ `message`.
-  version: 0.5.0
+  version: 0.6.0
 servers:
   - url: https://localhost:8080/api
     description: |
@@ -16,7 +16,7 @@ tags:
     description: Création de compte et connexion (US03, US04)
   - name: files
     description: |
-      Upload (authentifié US01 ou anonyme US07), téléchargement (US02), historique (US05), suppression (US06), tags (US08), protection par mot de passe (US09) et expiration automatique (US10)
+      Upload (authentifié US01 ou anonyme US07), téléchargement (US02), historique (US05), suppression (US06), protection par mot de passe (US09) et durée d'expiration du lien (US10)
 
 paths:
   /auth/register:
@@ -117,7 +117,7 @@ paths:
       operationId: uploadFile
       summary: Téléverser un fichier (US01 connecté / US07 anonyme)
       description: |
-        L'authentification est optionnelle sur cette route. Si un Bearer token valide est fourni, le fichier est rattaché à l'utilisateur (visible dans son historique, US01) et des tags peuvent lui être associés (US08). En l'absence de token, l'upload est traité en anonyme (US07) : le champ `tags` est alors ignoré et le fichier n'apparaît dans aucun historique. Les fichiers exécutables ou scripts sont refusés (contrôle sur l'extension du nom d'origine : .exe, .bat, .cmd, .com, .msi, .scr, .ps1, .vbs, .sh, .jar). Un token fourni mais invalide ou expiré est refusé (401) au lieu d'être traité comme un upload anonyme : le fichier n'aurait pas de propriétaire et son dépositaire ne pourrait ni le retrouver ni le supprimer.
+        L'authentification est optionnelle sur cette route. Si un Bearer token valide est fourni, le fichier est rattaché à l'utilisateur (visible dans son historique, US01). En l'absence de token, l'upload est traité en anonyme (US07) : le fichier n'apparaît dans aucun historique. Les fichiers exécutables ou scripts sont refusés (contrôle sur l'extension du nom d'origine : .exe, .bat, .cmd, .com, .msi, .scr, .ps1, .vbs, .sh, .jar). Un token fourni mais invalide ou expiré est refusé (401) au lieu d'être traité comme un upload anonyme : le fichier n'aurait pas de propriétaire et son dépositaire ne pourrait ni le retrouver ni le supprimer.
       security:
         - bearerAuth: []
         - {}
@@ -146,14 +146,6 @@ paths:
                   maximum: 7
                   default: 7
                   description: Durée avant expiration du lien (1 à 7 jours, US10)
-                tags:
-                  type: array
-                  nullable: true
-                  items:
-                    type: string
-                    maxLength: 30
-                  description: |
-                    Tags libres associés au fichier (US08). Ignoré si l'upload est anonyme. Les doublons pour un même fichier sont rejetés côté serveur.
       responses:
         '201':
           description: Fichier téléversé, lien de téléchargement généré
@@ -169,7 +161,7 @@ paths:
                 $ref: '#/components/schemas/Error'
         '422':
           description: |
-            Contrôle de saisie non respecté (US01, US08, US09, US10) : fichier absent, fichier de plus de 1 Go, extension interdite, mot de passe de moins de 6 caractères ou de plus de 72 octets, expiresInDays hors de 1 à 7, tag de plus de 30 caractères ou tag en doublon sur le fichier
+            Contrôle de saisie non respecté (US01, US09, US10) : fichier absent, fichier de plus de 1 Go, extension interdite, mot de passe de moins de 6 caractères ou de plus de 72 octets, expiresInDays hors de 1 à 7
           content:
             application/json:
               schema:
@@ -187,7 +179,7 @@ paths:
           in: query
           required: false
           description: |
-            Filtre sur l'état du lien. Par défaut, seuls les fichiers non expirés sont renvoyés (US06) ; les fichiers expirés restent visibles jusqu'à leur purge quotidienne (US10).
+            Filtre sur l'état du lien. Par défaut, seuls les fichiers non expirés sont renvoyés (US06) ; les fichiers expirés restent visibles avec le statut `expired` tant que leur propriétaire ne les supprime pas (la purge quotidienne d'US10 n'est pas réalisée).
           schema:
             type: string
             enum:
@@ -195,13 +187,6 @@ paths:
               - expired
               - all
             default: active
-        - name: tag
-          in: query
-          required: false
-          description: Filtre optionnel sur les fichiers portant ce tag (US08)
-          schema:
-            type: string
-            maxLength: 30
       responses:
         '200':
           description: Liste des fichiers de l'utilisateur connecté
@@ -219,7 +204,7 @@ paths:
                 $ref: '#/components/schemas/Error'
         '422':
           description: |
-            Paramètre de filtre invalide (status hors de active, expired, all, ou tag de plus de 30 caractères)
+            Paramètre de filtre invalide (status hors de active, expired, all)
           content:
             application/json:
               schema:
@@ -289,13 +274,13 @@ paths:
               schema:
                 $ref: '#/components/schemas/FilePublicMetadata'
         '404':
-          description: Lien invalide ou fichier déjà purgé
+          description: Lien invalide ou fichier supprimé
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
         '410':
-          description: Lien expiré (fichier pas encore purgé par la tâche planifiée)
+          description: Lien expiré (le fichier reste stocké, la purge quotidienne d'US10 n'étant pas réalisée)
           content:
             application/json:
               schema:
@@ -340,13 +325,13 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
         '404':
-          description: Lien invalide ou fichier déjà purgé
+          description: Lien invalide ou fichier supprimé
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
         '410':
-          description: Lien expiré (fichier pas encore purgé par la tâche planifiée)
+          description: Lien expiré (le fichier reste stocké, la purge quotidienne d'US10 n'étant pas réalisée)
           content:
             application/json:
               schema:
@@ -453,11 +438,6 @@ components:
           description: |
             Lien de partage, identique à celui renvoyé à l'upload (bouton « Accéder » des maquettes)
           example: https://datashare.fr/f/UhGyr
-        tags:
-          type: array
-          items:
-            type: string
-          description: Tags associés au fichier (US08, renvoyé à partir de cette user story)
 
     FilePublicMetadata:
       type: object

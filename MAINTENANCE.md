@@ -136,7 +136,7 @@ Correctives et mineures appliquées (`@types/node` 24.19.2, `dotenv` 18.0.7, `vi
 
 ### Fichiers et espace disque
 
-- Les fichiers expirés restent sur le disque jusqu'à la purge quotidienne prévue par US10. En attendant, les liens expirés sont déjà refusés (410).
+- La purge quotidienne d'US10 n'est pas réalisée : les liens expirés sont refusés (410), mais les fichiers expirés restent sur le disque et en base. L'écran « Mes fichiers » ne propose pas de supprimer un fichier expiré : son propriétaire ne peut le faire que par l'API (`DELETE /files/{id}`), et un fichier anonyme expiré ne peut être retiré que par une intervention manuelle. C'est la première évolution à prévoir si l'application est mise en service.
 - Surveiller l'espace libre du volume de `STORAGE_DIR` : chaque upload peut atteindre 1 Go, et l'événement `file uploaded` des logs donne le volume déposé (`sizeBytes`).
 - Le sous-dossier `tmp/` reçoit les uploads en cours. Un fichier qui y reste après un redémarrage du back provient d'un upload interrompu : il peut être supprimé.
 
