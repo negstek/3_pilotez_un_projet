@@ -38,7 +38,7 @@ export function serializeRequest(req: SerializedRequest) {
     id: req.id,
     method: req.method,
     url: maskDownloadToken(req.url),
-    // Size of the upload, for the performance analysis (see PERF.md).
+    // Size of the upload, for the performance analysis (see docs/PERF.md).
     contentLength: req.headers['content-length'],
     userAgent: req.headers['user-agent'],
     remoteAddress: req.remoteAddress,

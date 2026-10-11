@@ -1,4 +1,4 @@
-// Server side view of a performance test (`npm run perf`, see PERF.md), from the files written by scripts/perf.sh: the structured logs of
+// Server side view of a performance test (`npm run perf`, see docs/PERF.md), from the files written by scripts/perf.sh: the structured logs of
 // the back (one JSON line per request, with its `responseTime`) and the memory samples. k6 measures what the client sees; this measures
 // what the server spends, so the two can be compared.
 import { readFileSync, writeFileSync } from 'node:fs'

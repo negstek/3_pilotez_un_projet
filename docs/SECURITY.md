@@ -49,7 +49,7 @@ Résultat après correction : `npm audit` → **0 vulnérabilité**, dépendance
 | Image `postgres:16-alpine`, paquets Alpine | 0 vulnérabilité | — |
 | Image `postgres:16-alpine`, binaire `/usr/local/bin/gosu` | 25 CVE (24 hautes, 1 critique) de la bibliothèque standard Go (`crypto/tls`, `crypto/x509`, `net/url`, `net/http`…), par exemple [CVE-2025-68121](https://avd.aquasec.com/nvd/cve-2025-68121) | **Acceptée** (voir ci-dessous) |
 
-Analyse du cas `gosu` : `gosu` est un petit utilitaire écrit en Go. Le script de démarrage de l'image officielle PostgreSQL s'en sert une seule fois, pour abandonner les droits root et lancer PostgreSQL sous l'utilisateur `postgres`. Il n'ouvre aucune connexion réseau, ne manipule ni TLS ni certificat, n'analyse aucune URL, et il a terminé son travail avant que la base n'accepte la moindre connexion. Les fonctions vulnérables de la bibliothèque standard Go sont bien présentes dans le binaire, mais aucune n'est atteignable. C'est aussi la politique publiée par les mainteneurs de `gosu` ([SECURITY.md de tianon/gosu](https://github.com/tianon/gosu/blob/master/SECURITY.md)) : ils ne reconstruisent pas le binaire pour des CVE Go qui touchent des fonctions qu'il n'appelle jamais, et renvoient vers `govulncheck` pour le vérifier. L'image est déjà la dernière publiée de la branche 16 (vérifié avec `docker pull`) : il n'existe pas de version plus récente à adopter. Ce fichier est donc exclu du scan (`--skip-files usr/local/bin/gosu` dans [scripts/trivy.sh](scripts/trivy.sh)). L'exclusion est limitée à ce seul binaire : le reste de l'image reste analysé et bloquant.
+Analyse du cas `gosu` : `gosu` est un petit utilitaire écrit en Go. Le script de démarrage de l'image officielle PostgreSQL s'en sert une seule fois, pour abandonner les droits root et lancer PostgreSQL sous l'utilisateur `postgres`. Il n'ouvre aucune connexion réseau, ne manipule ni TLS ni certificat, n'analyse aucune URL, et il a terminé son travail avant que la base n'accepte la moindre connexion. Les fonctions vulnérables de la bibliothèque standard Go sont bien présentes dans le binaire, mais aucune n'est atteignable. C'est aussi la politique publiée par les mainteneurs de `gosu` ([SECURITY.md de tianon/gosu](https://github.com/tianon/gosu/blob/master/SECURITY.md)) : ils ne reconstruisent pas le binaire pour des CVE Go qui touchent des fonctions qu'il n'appelle jamais, et renvoient vers `govulncheck` pour le vérifier. L'image est déjà la dernière publiée de la branche 16 (vérifié avec `docker pull`) : il n'existe pas de version plus récente à adopter. Ce fichier est donc exclu du scan (`--skip-files usr/local/bin/gosu` dans [scripts/trivy.sh](../scripts/trivy.sh)). L'exclusion est limitée à ce seul binaire : le reste de l'image reste analysé et bloquant.
 
 ### Ignorées
 
@@ -57,7 +57,7 @@ Aucune vulnérabilité n'a été ignorée sans analyse. Les seules exclusions so
 
 ## Décisions de sécurité de l'application
 
-Les arbitrages détaillés sont dans [docs/architecture.md](docs/architecture.md). En résumé :
+Les arbitrages détaillés sont dans [docs/architecture.md](architecture.md). En résumé :
 
 | Risque | Mesure | Référence |
 |---|---|---|
@@ -69,13 +69,16 @@ Les arbitrages détaillés sont dans [docs/architecture.md](docs/architecture.md
 | Fichier malveillant | Extensions exécutables refusées (`.exe`, `.bat`, `.sh`…) ; téléchargement toujours en `application/octet-stream` avec `X-Content-Type-Options: nosniff`, pour que le navigateur n'exécute jamais un HTML ou un SVG déposé | US01 |
 | Saturation du disque | Taille limitée à 1 Go, reçue en flux et interrompue au dépassement ; lien refusé dès l'expiration. Risque résiduel : la purge quotidienne d'US10 n'est pas réalisée, les fichiers expirés restent sur le disque (cf. `MAINTENANCE.md`) | US01, US10 |
 | Champs inattendus dans les requêtes | `ValidationPipe` en liste blanche (`whitelist`) : les propriétés non déclarées sont retirées | toutes |
+| XSS (script injecté dans la page) | React échappe tout contenu affiché et l'application n'insère jamais de HTML brut ; un fichier déposé est toujours servi en binaire, donc jamais exécuté par le navigateur | toutes |
+| CSRF (action déclenchée depuis un site tiers) | Le JWT voyage dans l'en-tête `Authorization`, ajouté par le code du front, et non dans un cookie envoyé automatiquement ; aucune autre origine n'est autorisée (pas de CORS) | US04 |
+| Injection SQL | Tous les accès à la base passent par Prisma, dont les requêtes sont paramétrées ; aucune requête SQL écrite à la main | toutes |
 | Interception | HTTPS jusqu'au proxy dès le développement ; mot de passe de fichier envoyé dans le corps d'un POST, jamais dans l'URL | note « HTTPS en développement » |
 | Fuite de données par les logs | Champs journalisés listés explicitement (jamais `Authorization`, cookie ni corps de requête), token de téléchargement tronqué à 8 caractères, aucun email (seulement des identifiants) | note « logs structurés » |
 
 ### Risques acceptés pour le MVP
 
 - **Pas de limitation de débit** (*rate limiting*) : l'upload anonyme (US07) permet à n'importe qui d'écrire jusqu'à 1 Go par requête, et la connexion n'est pas protégée contre le *brute force* au-delà du coût de bcrypt. C'est l'évolution prioritaire (`@nestjs/throttler`, ou limitation au niveau du reverse proxy).
-- **Token stocké dans le `localStorage`** : il est lisible par un script injecté (XSS). React échappe tout contenu affiché et l'application n'insère aucun HTML brut, ce qui réduit ce risque. Le compromis avec un cookie `httpOnly` est documenté dans [docs/architecture.md](docs/architecture.md).
+- **Token stocké dans le `localStorage`** : il est lisible par un script injecté (XSS). React échappe tout contenu affiché et l'application n'insère aucun HTML brut, ce qui réduit ce risque. Le compromis avec un cookie `httpOnly` est documenté dans [docs/architecture.md](architecture.md).
 - **Pas d'en-têtes de sécurité HTTP** (CSP, HSTS…) côté API : ils relèvent du reverse proxy de production, qui sert aussi le front.
 - **Pas d'analyse antivirus** des fichiers déposés : le filtrage par extension et le téléchargement forcé en binaire limitent le risque, sans l'éliminer.
 

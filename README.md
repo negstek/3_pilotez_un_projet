@@ -2,7 +2,7 @@
 
 [![Couverture de tests](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/negstek/3_pilotez_un_projet/gh-pages/coverage.json)](https://negstek.github.io/3_pilotez_un_projet/)
 
-Prototype de partage de fichiers (upload, téléchargement par lien, historique, protection par mot de passe, expiration automatique). Voir [docs/architecture.md](docs/architecture.md) pour l'architecture détaillée et [docs/mcd.md](docs/mcd.md) pour le modèle de données.
+Prototype de partage de fichiers (upload, téléchargement par lien, historique, protection par mot de passe, expiration automatique). Voir [docs/documentation-technique.md](docs/documentation-technique.md) pour la documentation technique, [docs/architecture.md](docs/architecture.md) pour l'architecture détaillée et [docs/mcd.md](docs/mcd.md) pour le modèle de données.
 
 ## Stack
 
@@ -77,6 +77,16 @@ Le serveur Vite utilise un certificat auto-signé, généré au premier démarra
 
 Le back et le front utilisent la version **compilée** de `shared_lib`. Hors VS Code, la garder compilée en continu dans un troisième terminal avec `npm run dev -w @datashare/shared-lib` : l'API et le front prennent alors en compte chaque modification sans redémarrage manuel. Avec les configurations de debug VS Code, c'est automatique (voir « Débogage dans VS Code »).
 
+## Utilisation
+
+Une fois l'application lancée, ouvrir https://localhost:8080 :
+
+1. **Déposer un fichier** depuis l'accueil, avec ou sans compte : choisir le fichier (1 Go maximum), éventuellement un mot de passe et une durée de validité de 1 à 7 jours, puis téléverser. L'application affiche le lien à partager.
+2. **Télécharger** en ouvrant ce lien : la page affiche le nom et la taille du fichier, demande le mot de passe s'il est protégé, puis lance le téléchargement.
+3. **Créer un compte et se connecter** pour retrouver ses fichiers dans « Mon espace » : état de chaque lien (actif ou expiré), filtre et suppression.
+
+Le parcours complet, les limites et les messages d'erreur sont décrits dans le [guide utilisateur](docs/guide-utilisateur.md).
+
 ## Tests et lint
 
 ```bash
@@ -105,17 +115,17 @@ cd front && npm run test:cov
 
 Les tests Cypress tournent sur leurs propres ports (back 3001, front `https://localhost:8081`) et sur la base de test : ils peuvent être lancés pendant une session de développement, sans toucher à ses données. Le rapport de couverture global est écrit dans `coverage/index.html` à la racine, ceux de chaque application dans `back/coverage/` et `front/coverage/`.
 
-Le badge en tête de ce README affiche la couverture globale des lignes sur `main` et ouvre le [rapport en ligne](https://negstek.github.io/3_pilotez_un_projet/) : couverture fichier par fichier et résultat de chaque test du back et du front. Les deux sont mis à jour par GitHub Actions ([.github/workflows/coverage.yml](.github/workflows/coverage.yml)), qui relance `npm run test:cov` à chaque push : voir « Badge de couverture et rapport en ligne » dans [TESTING.md](TESTING.md).
+Le badge en tête de ce README affiche la couverture globale des lignes sur `main` et ouvre le [rapport en ligne](https://negstek.github.io/3_pilotez_un_projet/) : couverture fichier par fichier et résultat de chaque test du back et du front. Les deux sont mis à jour par GitHub Actions ([.github/workflows/coverage.yml](.github/workflows/coverage.yml)), qui relance `npm run test:cov` à chaque push : voir « Badge de couverture et rapport en ligne » dans [TESTING.md](docs/TESTING.md).
 
 `npm run test:cov` écrit aussi le rapport HTML des tests de chaque application dans `back/.vitest/` et `front/.vitest/`, à ouvrir avec `npx vite preview --outDir .vitest` depuis le dossier de l'application.
 
 Le formatage est assuré par Prettier, avec une configuration propre à chaque package (`back/.prettierrc`, `front/.prettierrc`, `shared_lib/.prettierrc`) : `npm run format` reformate le code et `npm run format:check` vérifie sans modifier (depuis la racine, les trois packages).
 
-Les tests e2e du back utilisent une base dédiée, `datashare_test`, sur le PostgreSQL du `docker-compose.yml` (configuration dans `back/.env.test`). Elle est créée et migrée automatiquement au lancement de `npm run test:e2e`, puis vidée avant chaque test : les données de développement ne sont jamais touchées. Le plan de tests est décrit dans [TESTING.md](TESTING.md).
+Les tests e2e du back utilisent une base dédiée, `datashare_test`, sur le PostgreSQL du `docker-compose.yml` (configuration dans `back/.env.test`). Elle est créée et migrée automatiquement au lancement de `npm run test:e2e`, puis vidée avant chaque test : les données de développement ne sont jamais touchées. Le plan de tests est décrit dans [TESTING.md](docs/TESTING.md).
 
 ### Hooks Git, sécurité et performance
 
-`npm install` active les hooks Git versionnés dans `.githooks/` : avant chaque commit, le lint et le formatage sont vérifiés ; avant chaque push, `npm audit` bloque sur une vulnérabilité haute ou critique d'une dépendance de production, et `npm outdated` liste les paquets en retard (pour information). La CI ([.github/workflows/quality.yml](.github/workflows/quality.yml)) rejoue ces contrôles et lance Trivy à chaque push et chaque lundi. Détail dans [MAINTENANCE.md](MAINTENANCE.md).
+`npm install` active les hooks Git versionnés dans `.githooks/` : avant chaque commit, le lint et le formatage sont vérifiés ; avant chaque push, `npm audit` bloque sur une vulnérabilité haute ou critique d'une dépendance de production, et `npm outdated` liste les paquets en retard (pour information). La CI ([.github/workflows/quality.yml](.github/workflows/quality.yml)) rejoue ces contrôles et lance Trivy à chaque push et chaque lundi. Détail dans [MAINTENANCE.md](docs/MAINTENANCE.md).
 
 ```bash
 npm run security:audit   # npm audit des dépendances de production (seuil : haute)
@@ -123,7 +133,7 @@ npm run security:trivy   # Trivy en Docker : dépendances, secrets, configuratio
 npm run perf             # test de charge k6 (upload / téléchargement), résultats dans perf/results/
 ```
 
-Les résultats et les décisions de sécurité sont dans [SECURITY.md](SECURITY.md), le test de charge, les logs structurés et le budget du front dans [PERF.md](PERF.md).
+Les résultats et les décisions de sécurité sont dans [SECURITY.md](docs/SECURITY.md), le test de charge, les logs structurés et le budget du front dans [PERF.md](docs/PERF.md).
 
 Le back écrit des logs structurés (pino) : une ligne JSON par requête avec sa durée, et les événements métier (fichier déposé, téléchargé, supprimé). `LOG_LEVEL` règle le niveau et `LOG_FORMAT=pretty` donne une sortie lisible en développement (voir `back/.env.example`).
 

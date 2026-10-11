@@ -11,6 +11,10 @@ Ce document décrit la user story confiée à un copilote IA, **US07 — Upload 
 | `8957637` `feat(ai): upload anonyme, premier jet (IA) (US07)`            | Code généré par l'IA, commité tel quel avant relecture |
 | `da8d77d` `fix: corrections sur l'upload anonyme (revue humaine) (US07)` | Corrections décidées à la relecture                    |
 
+## Posture adoptée
+
+- **Assignation de tâche, comme à un développeur junior**, pour US07. La user story a été confiée en entier, avec un périmètre et des tâches fixés à l'avance. Le résultat a été commité tel quel, puis relu et corrigé dans un second commit. C'est l'exercice que ce document détaille : la contribution de l'IA et la correction humaine restent séparées dans l'historique Git.
+
 ## Pourquoi US07
 
 US07 se prête à l'exercice pour trois raisons :
@@ -102,19 +106,19 @@ Les arbitrages d'US07 sont détaillés dans la note « mise en œuvre de l'uploa
 
 - **Une seule route pour les deux cas** : les règles « identiques à US01 » des spécifications le sont par construction, sans second chemin de code.
 - **Authentification optionnelle, mais jamais ignorée** : un token présenté et invalide est refusé, pas dégradé en anonyme.
-- **Un fichier anonyme n'a pas de propriétaire** : personne ne peut le retrouver ni le supprimer ; il disparaît à son expiration.
+- **Un fichier anonyme n'a pas de propriétaire** : personne ne peut le retrouver ni le supprimer ; son lien cesse de fonctionner à l'expiration.
 - **Risque accepté pour le MVP** : l'upload n'exige plus de compte, donc n'importe qui peut écrire jusqu'à 1 Go sur le serveur, sans limite de fréquence. Les spécifications n'en demandent pas ; la limitation par adresse IP est notée comme évolution prioritaire.
 
 ## Limites rencontrées
 
-Au-delà d'US07, l'usage du copilote sur l'ensemble du projet a fait apparaître trois limites récurrentes. Toutes se compensent par la supervision, à condition de savoir où regarder.
+L'usage du copilote a fait apparaître trois limites récurrentes. Toutes se compensent par la supervision, à condition de savoir où regarder.
 
 ### Suggestions surdimensionnées
 
-L'IA propose volontiers l'outil le plus répandu de l'écosystème, même quand il n'apporte rien au contexte du projet. Par exemple, pour les hooks Git, elle a d'abord recommandé Husky et lint-staged : deux dépendances de plus. Or le mécanisme natif de Git (`core.hooksPath` pointant vers un dossier versionné) fait la même chose. Husky v9 n'est d'ailleurs qu'une fine surcouche de ce mécanisme, et lint-staged n'apporte qu'un gain de quelques secondes sur un dépôt de cette taille.
+L'IA propose volontiers l'outil le plus répandu de l'écosystème, même quand il n'apporte rien au contexte du projet.
 
 - **Risque** : accumuler des dépendances à maintenir et à auditer, sans bénéfice réel. C'est contraire à la contrainte de pragmatisme d'un MVP solo.
-- **Parade** : connaître les mécanismes natifs des outils (Git, npm, Node, le framework) pour pouvoir demander à l'IA ce que la dépendance apporte de plus, et refuser celles qui n'apportent rien. Les arbitrages retenus sont consignés dans [architecture.md](architecture.md).
+- **Parade** : connaître les mécanismes natifs des outils (Git, npm, Node, le framework) pour pouvoir demander à l'IA ce que la dépendance apporte de plus, et refuser celles qui n'apportent rien.
 
 ### Usage ponctuel d'API dépréciées
 
@@ -125,13 +129,7 @@ Le code généré reprend parfois des méthodes ou des options dépréciées, is
 
 ### Prises d'initiative non sollicitées
 
-Un copilote comme Claude Code ne se contente pas de proposer du code : il exécute des commandes sur le poste (installations, scripts, conteneurs Docker, navigateur) et modifie des fichiers. Quand il rencontre un besoin en cours de route, il a tendance à le traiter lui-même plutôt qu'à le signaler. Lors de la mise en place de `SECURITY.md`, `PERF.md` et `MAINTENANCE.md`, il a ainsi, sans le demander au préalable :
-
-- lancé Lighthouse, un outil qui n'avait pas été validé, pour couvrir une exigence des spécifications qu'il avait manquée au moment du choix des outils. Le profil temporaire de Chrome s'est créé dans `front/`, et il a dû le supprimer ;
-- modifié le fichier `back/.env` local, non versionné, pour y ajouter les nouvelles variables de logs ;
-- supprimé des dépendances (`@nestjs/mau`, `vite-tsconfig-paths`) et appliqué des mises à jour mineures (`npm update`). Ces changements étaient justifiés et ont été vérifiés par les tests, mais ils n'avaient pas été demandés.
-
-Ces initiatives partaient d'une bonne intention et étaient signalées dans le compte rendu final, mais **après coup**. Le développeur découvre alors un fait accompli au lieu de prendre une décision.
+Un copilote comme Claude Code ne se contente pas de proposer du code : il exécute des commandes sur le poste (installations, scripts, conteneurs Docker, navigateur) et modifie des fichiers. Quand il rencontre un besoin en cours de route, il a tendance à le traiter lui-même plutôt qu'à le signaler.
 
 - **Risque** : perdre la maîtrise de ce qui entre dans le projet et de ce qui s'exécute sur le poste. Cela peut aller d'un outil ou d'une dépendance non choisis à une modification de configuration locale passée inaperçue. Dans le pire des cas, il peut s'agir d'une commande destructrice ou d'un paquet compromis.
 - **Parade** : garder un œil sur ce que l'IA exécute, et lui imposer des points de validation explicites plutôt que de compter sur son jugement :
@@ -153,3 +151,10 @@ L'IA accélère nettement la production, mais la responsabilité de ce qui entre
 ## Bilan
 
 Le premier jet était fonctionnel pour le cas nominal, mais il contenait un défaut d'autorisation que ni la compilation ni les tests existants ne signalaient : il fallait confronter le comportement du guard aux user stories voisines (US05, US06) pour le voir. C'est le principal enseignement de l'exercice : sur une fonctionnalité qui touche à l'authentification, la relecture doit porter sur les cas d'échec, pas seulement sur le parcours qui fonctionne.
+
+Les apports et les limites se répartissent ainsi :
+
+- **Apports** : un premier jet fonctionnel obtenu rapidement, sur une user story au périmètre bien délimité. Le temps gagné à l'écriture a pu être consacré à la relecture et aux tests.
+- **Limites** : des suggestions surdimensionnées, des API dépréciées et des initiatives non sollicitées (cf. « Limites rencontrées »), auxquelles s'ajoute le défaut d'autorisation d'US07. Aucune n'était visible sans relecture.
+
+Le gain de temps est réel, mais il ne vaut que si une partie est réinvestie dans la supervision.

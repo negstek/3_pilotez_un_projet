@@ -93,7 +93,7 @@ paths:
       operationId: getCurrentUser
       summary: Identité de l'utilisateur associé au token (US04)
       description: |
-        Permet au client de vérifier qu'un token est toujours accepté par l'API et sert de route témoin pour le guard JWT.
+        Route témoin du guard JWT : les tests d'intégration s'en servent pour vérifier le contrôle d'accès (sans token, token falsifié, token expiré, token valide), et un client peut l'appeler pour savoir si son token est toujours accepté par l'API. Le front de DataShare ne l'appelle pas : il lit l'utilisateur dans la réponse de la connexion ou de l'inscription, et un token refusé est détecté au premier appel protégé (401).
       security:
         - bearerAuth: []
       responses:

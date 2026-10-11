@@ -1,6 +1,6 @@
 # Suivi de performance
 
-Ce document présente le test de charge du parcours critique (upload puis téléchargement), son interprétation, les logs structurés et les métriques suivies côté serveur, ainsi que le budget de performance du front. Les choix d'outils sont justifiés dans la note « logs structurés et test de performance » de [docs/architecture.md](docs/architecture.md).
+Ce document présente le test de charge du parcours critique (upload puis téléchargement), son interprétation, les logs structurés et les métriques suivies côté serveur, ainsi que le budget de performance du front. Les choix d'outils sont justifiés dans la note « logs structurés et test de performance » de [docs/architecture.md](architecture.md).
 
 ## Outils
 
@@ -8,15 +8,15 @@ Ce document présente le test de charge du parcours critique (upload puis télé
 |---|---|---|
 | Test de charge | **k6** 2.3 (Grafana), dans son image Docker | Outil cité par les spécifications, scénarios en JavaScript, seuils (*thresholds*) qui font échouer le test, rapport HTML intégré ; rien à installer |
 | Logs structurés | **pino** via `nestjs-pino` | Une ligne JSON par événement, une ligne par requête avec sa durée (`responseTime`), un identifiant de corrélation par requête ; le logger le plus rapide de l'écosystème Node |
-| Métriques du process | `ps` et `/proc/<pid>/stat`, relevés chaque seconde par [scripts/perf.sh](scripts/perf.sh) | Mémoire (RSS) et CPU du back pendant le test, sans infrastructure de supervision |
-| Analyse serveur | [scripts/perf-report.mjs](scripts/perf-report.mjs) | Percentiles des temps de réponse par route, événements métier et chronologie, calculés à partir des logs |
+| Métriques du process | `ps` et `/proc/<pid>/stat`, relevés chaque seconde par [scripts/perf.sh](../scripts/perf.sh) | Mémoire (RSS) et CPU du back pendant le test, sans infrastructure de supervision |
+| Analyse serveur | [scripts/perf-report.mjs](../scripts/perf-report.mjs) | Percentiles des temps de réponse par route, événements métier et chronologie, calculés à partir des logs |
 | Performance navigateur | **Lighthouse** 13.5, lancé ponctuellement avec `npx` | Référence pour les Core Web Vitals ; pas besoin d'en faire une dépendance |
 
 ## Test de charge du parcours critique
 
 ### Scénario
 
-Le script [perf/upload-download.js](perf/upload-download.js) enchaîne, pour chaque utilisateur virtuel, les étapes d'un partage :
+Le script [perf/upload-download.js](../perf/upload-download.js) enchaîne, pour chaque utilisateur virtuel, les étapes d'un partage :
 
 1. `POST /files` : téléversement d'un fichier de **5 Mo** (taille typique d'un document partagé), connecté ;
 2. `GET /f/:token` : ouverture du lien (métadonnées) ;
@@ -43,7 +43,7 @@ Tout tourne sur un seul poste de développement : Ryzen 9 5950X (16 cœurs), 32 
 
 ### Résultats (10/10/2026)
 
-![Rapport k6 : débit, latence p95, utilisateurs virtuels et volume transféré au fil du test](docs/perf/k6-report.png)
+![Rapport k6 : débit, latence p95, utilisateurs virtuels et volume transféré au fil du test](perf/k6-report.png)
 
 **Côté client (k6)** : 1 077 itérations, 4 309 requêtes, **0 % d'erreur**, 5 385 vérifications réussies sur 5 385, 5,6 Go envoyés et 5,6 Go reçus. **Tous les seuils sont respectés.**
 
@@ -119,7 +119,7 @@ Le token de téléchargement est tronqué à 8 caractères (`472e8b21…`) : c'e
 | `file deleted` | `info` | `fileId` |
 | `account created` | `info` | `userId` |
 
-Configuration : `LOG_LEVEL` (`info` par défaut, `silent` dans les tests) et `LOG_FORMAT=pretty` pour une sortie lisible en développement (voir `back/.env.example`). Le code est dans [back/src/logging/logger.config.ts](back/src/logging/logger.config.ts).
+Configuration : `LOG_LEVEL` (`info` par défaut, `silent` dans les tests) et `LOG_FORMAT=pretty` pour une sortie lisible en développement (voir `back/.env.example`). Le code est dans [back/src/logging/logger.config.ts](../back/src/logging/logger.config.ts).
 
 ### Métriques clés et comment les obtenir
 

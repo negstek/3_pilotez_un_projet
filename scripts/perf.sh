@@ -1,5 +1,5 @@
 #!/bin/sh
-# Performance test (`npm run perf`, see PERF.md). Starts a back of its own on port 3001 with the test database (like `npm run e2e`), with
+# Performance test (`npm run perf`, see docs/PERF.md). Starts a back of its own on port 3001 with the test database (like `npm run e2e`), with
 # JSON logs written to perf/results/back.log, samples its memory every second, runs the k6 scenario, then summarizes the server side metrics.
 # Needs the PostgreSQL of docker-compose.
 set -e

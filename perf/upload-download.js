@@ -1,4 +1,4 @@
-// Load test of the critical path of DataShare (`npm run perf`, see PERF.md): a logged-in user uploads a file, opens the link, downloads
+// Load test of the critical path of DataShare (`npm run perf`, see docs/PERF.md): a logged-in user uploads a file, opens the link, downloads
 // the file, then deletes it. Run by k6 against the back directly (no Vite proxy), on the test database.
 import http from 'k6/http'
 import { check, fail, sleep } from 'k6'
@@ -18,7 +18,7 @@ export const options = {
     { duration: '40s', target: 20 },
     { duration: '10s', target: 0 },
   ],
-  // Objectives set before the run (see PERF.md): the test fails if one of them is missed.
+  // Objectives set before the run (see docs/PERF.md): the test fails if one of them is missed.
   thresholds: {
     http_req_failed: ['rate<0.01'],
     'http_req_duration{name:upload}': ['p(95)<2000'],

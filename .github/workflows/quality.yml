@@ -1,5 +1,5 @@
 # Quality and security checks: the same checks as the Git hooks of .githooks/ (lint, formatting, npm audit, npm outdated), which a developer
-# can bypass with --no-verify, plus the Trivy scan. The coverage is checked by coverage.yml. See SECURITY.md and MAINTENANCE.md.
+# can bypass with --no-verify, plus the Trivy scan. The coverage is checked by coverage.yml. See docs/SECURITY.md and docs/MAINTENANCE.md.
 name: Quality
 
 on:
@@ -50,7 +50,7 @@ jobs:
         run: npm run security:audit
 
       # For information, in the summary of the run: every vulnerability, dev dependencies included, and the packages behind their latest
-      # version. Reviewed following the procedure of MAINTENANCE.md.
+      # version. Reviewed following the procedure of docs/MAINTENANCE.md.
       - name: Dependency report
         if: always()
         run: |

@@ -26,5 +26,5 @@ docs/ia_use.md
 # Transcription Markdown du PDF des spécifications (aide à la lecture, le PDF fait foi)
 docs/specifications.md
 
-# Résultats des tests de performance (npm run perf, cf. PERF.md)
+# Résultats des tests de performance (npm run perf, cf. docs/PERF.md)
 /perf/results

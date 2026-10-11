@@ -84,7 +84,7 @@ writeFileSync(
     </ul>
     <p>Les scénarios end-to-end Cypress ne sont pas exécutés par l'intégration continue : ils n'apparaissent pas ici.</p>
 
-    <footer>Le périmètre de la mesure et le plan de tests sont décrits dans TESTING.md, à la racine du dépôt.</footer>
+    <footer>Le périmètre de la mesure et le plan de tests sont décrits dans docs/TESTING.md.</footer>
   </body>
 </html>
 `,

@@ -13,7 +13,7 @@ Les contrôles qualité s'exécutent à trois moments, du plus rapide au plus co
 | **CI GitHub Actions**, à chaque push sur `main` et chaque pull request | `quality.yml` : lint, formatage, audit, rapport complet `npm audit` / `npm outdated`, Trivy ; `coverage.yml` : tests et couverture ≥ 70 % | oui (sauf rapports) | quelques minutes |
 | **CI, chaque lundi** (`schedule`) | `quality.yml` complet | oui | — |
 
-**Activation des hooks.** Ce sont des hooks Git natifs, versionnés dans `.githooks/`. Le script `prepare` du `package.json`, exécuté par `npm install`, les active (`git config core.hooksPath .githooks`). Il n'y a rien à faire après un clone, sinon `npm install`. Les raisons de ce choix plutôt que Husky sont dans la note « contrôles automatisés : hooks Git, CI et scanners de sécurité » de [docs/architecture.md](docs/architecture.md).
+**Activation des hooks.** Ce sont des hooks Git natifs, versionnés dans `.githooks/`. Le script `prepare` du `package.json`, exécuté par `npm install`, les active (`git config core.hooksPath .githooks`). Il n'y a rien à faire après un clone, sinon `npm install`. Les raisons de ce choix plutôt que Husky sont dans la note « contrôles automatisés : hooks Git, CI et scanners de sécurité » de [docs/architecture.md](architecture.md).
 
 **Contournement.** `git commit --no-verify` ou `git push --no-verify` court-circuite les hooks : c'est utile sans réseau, ou pour un commit de travail intermédiaire sur une branche. La CI refait les mêmes contrôles : un contournement ne fait que repousser l'échec, il ne l'évite pas.
 
@@ -114,7 +114,7 @@ Correctives et mineures appliquées (`@types/node` 24.19.2, `dotenv` 18.0.7, `vi
 4. **Corriger** sur une branche `fix/<sujet>`, jusqu'à ce que le test passe, ainsi que tous les autres.
 5. **Contrôler** : les hooks s'exécutent au commit et au push ; pour une correction sensible (authentification, fichiers), lancer aussi `npm run test:cov` et `npm run e2e`.
 6. **Committer** en `fix: …`, avec dans le corps la cause, la correction et le test ajouté ; pousser, ouvrir une pull request et vérifier la CI.
-7. **Documenter** : si la correction change un comportement, mettre à jour le contrat d'API (`docs/api-contract.yaml`) et la note concernée de [docs/architecture.md](docs/architecture.md).
+7. **Documenter** : si la correction change un comportement, mettre à jour le contrat d'API (`docs/api-contract.yaml`) et la note concernée de [docs/architecture.md](architecture.md).
 
 **Correction de sécurité urgente** (vulnérabilité exploitable dans une dépendance) : même procédure, en priorité sur tout le reste. Si aucune version corrigée n'existe, évaluer le contournement (`overrides` vers une version corrigée de la dépendance transitive, désactivation de la fonctionnalité concernée) et consigner la décision dans [SECURITY.md](SECURITY.md).
 

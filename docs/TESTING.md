@@ -1,6 +1,6 @@
 # Plan de tests
 
-Document vivant, complété à chaque fonctionnalité livrée. Les choix d'outils sont justifiés dans [docs/architecture.md](docs/architecture.md) (tableau de synthèse et note « simulation des appels API dans les tests front »).
+Document vivant, complété à chaque fonctionnalité livrée. Les choix d'outils sont justifiés dans [docs/architecture.md](architecture.md) (tableau de synthèse et note « simulation des appels API dans les tests front »).
 
 ## Fonctionnalités critiques et critères d'acceptation
 
@@ -22,23 +22,35 @@ Critères communs : tous les tests passent avant chaque commit poussé sur `main
 
 ## Résultats
 
-Relevés le 2026-10-08, sur le commit en cours.
+Relevés le 2026-10-10, sur le commit `989819a`.
 
 | Suite | Commande | Résultat |
 |---|---|---|
 | Unitaires `shared_lib` | `npm test -w @datashare/shared-lib` | 10 tests réussis sur 10 |
-| Unitaires back | `cd back && npm test` | 68 tests réussis sur 68 |
+| Unitaires back | `cd back && npm test` | 81 tests réussis sur 81 |
 | Intégration de l'API | `cd back && npm run test:e2e` | 43 tests réussis sur 43 |
 | Unitaires et composants front | `cd front && npm test` | 72 tests réussis sur 72 |
 | End-to-end Cypress | `npm run e2e` (racine) | 3 scénarios réussis sur 3 |
+
+Les deux captures ci-dessous viennent du rapport HTML de Vitest, écrit par `npm run test:cov` et publié en ligne (cf. « Badge de couverture et rapport en ligne »). Celui du back réunit ses tests unitaires et ses tests d'intégration de l'API : 81 + 43 = 124.
+
+![Rapport Vitest du back : 124 tests réussis sur 124, dans 12 fichiers, aucun échec](tests/vitest-back.png)
+
+![Rapport Vitest du front : 72 tests réussis sur 72, dans 12 fichiers, aucun échec](tests/vitest-front.png)
 
 ### Rapport de couverture
 
 | | Instructions | Branches | Fonctions | Lignes | Seuil |
 |---|---|---|---|---|---|
-| Back (`cd back && npm run test:cov`) | 100 % | 83,78 % | 100 % | 100 % | 70 % |
+| Back (`cd back && npm run test:cov`) | 100 % | 86,04 % | 100 % | 100 % | 70 % |
 | Front (`cd front && npm run test:cov`) | 91,69 % | 90,69 % | 87,75 % | 93,66 % | 70 % |
-| **Global** (`npm run test:cov` à la racine) | 94,2 % | 88,92 % | 91,89 % | 95,62 % | 70 % |
+| **Global** (`npm run test:cov` à la racine) | 94,45 % | 89,36 % | 92,25 % | 95,82 % | 70 % |
+
+Capture du rapport de couverture global (`coverage/index.html`), dossier par dossier :
+
+![Rapport de couverture global : 94,45 % des instructions, 89,36 % des branches, 92,25 % des fonctions et 95,82 % des lignes, avec le détail par dossier du back et du front](tests/coverage-global.png)
+
+Deux lignes passent sous le seuil sans le remettre en cause, puisqu'il s'applique au total de chaque package : `front/src` ne contient que `App.tsx`, la table des routes, exercée par les scénarios Cypress qui ne sont pas comptés ; `front/src/api` (70 % des lignes) regroupe les fonctions d'appel à l'API, remplacées par des simulations dans les tests de composants.
 
 `npm run test:cov` affiche le détail par fichier et écrit le rapport HTML dans `coverage/index.html`. À la racine, la commande lance celle du back puis celle du front, fusionne leurs deux rapports (`scripts/coverage-global.mjs`) et écrit le rapport global dans `coverage/index.html` à la racine ; les rapports par package restent dans `back/coverage/` et `front/coverage/`. Elle échoue si l'une des quatre mesures passe sous 70 %, par package comme au global.
 
@@ -51,7 +63,9 @@ Périmètre de la mesure :
 
 ### Badge de couverture et rapport en ligne
 
-Le badge en tête du [README](README.md) affiche la couverture **globale des lignes** mesurée sur `main`. Il ouvre le rapport en ligne, publié sur GitHub Pages : https://negstek.github.io/3_pilotez_un_projet/
+Le badge en tête du [README](../README.md) affiche la couverture **globale des lignes** mesurée sur `main`. Il ouvre le rapport en ligne, publié sur GitHub Pages : https://negstek.github.io/3_pilotez_un_projet/
+
+![Page d'accueil du rapport en ligne : les quatre mesures de couverture globale face au seuil de 70 %, avec la date et le commit du rapport](tests/rapport-en-ligne.png)
 
 | Page | Contenu | Source |
 |---|---|---|
@@ -71,6 +85,21 @@ Le rapport n'est publié que si le workflow réussit : après un échec, le badg
 Les scénarios Cypress ne sont pas exécutés par le workflow : ils n'apparaissent pas dans le rapport en ligne et se lancent en local (`npm run e2e`).
 
 En local, les mêmes rapports de tests s'ouvrent après `npm run test:cov` avec `npx vite preview --outDir .vitest`, depuis `back/` ou `front/`.
+
+## Anomalies détectées et corrigées
+
+Les tests n'ont pas seulement confirmé ce qui fonctionnait. Les anomalies suivantes ont été détectées par un test ou par un contrôle automatique, ou trouvées à la relecture puis verrouillées par un test pour qu'elles ne reviennent pas.
+
+| Anomalie | Détectée par | Correction | Test qui la verrouille |
+|---|---|---|---|
+| Un token expiré ou falsifié était accepté comme un upload anonyme : le fichier perdait son propriétaire, sans erreur (premier jet d'US07) | Relecture du code, en confrontant le guard à US05 et US06 | Le guard refuse la requête (`401`) avant toute écriture sur le disque | Tests du guard et tests d'intégration : `401` pour un token falsifié ou illisible, aucun fichier créé |
+| Après l'ouverture de l'upload aux visiteurs, deux tests décrivaient encore l'ancien comportement (`401` sans token, redirection vers la connexion) | Tests existants, en échec | Comportement confirmé face aux spécifications, tests réécrits | Tests de l'upload anonyme (API et écran d'accueil) |
+| Les fichiers sans propriétaire n'étaient pas supprimés entre deux tests : la suppression en cascade des utilisateurs ne les atteignait pas, et un test pouvait lire les données du précédent | Tests d'intégration de l'API | Les tests vident aussi la table des fichiers | Toute la suite d'intégration, qui repart d'une base vide à chaque test |
+| Avec les seuls tests unitaires, les fonctions du back n'étaient couvertes qu'à 56 % : contrôleurs, guards et stratégie JWT n'étaient exercés par aucun d'eux | Rapport de couverture | Tests d'intégration ajoutés à la mesure, et seuil de 70 % rendu bloquant | `npm run test:cov`, en local et dans la CI |
+| Le filtre de « Mes fichiers » utilisait un rôle ARIA à la place de l'élément natif, et son option sélectionnée avait un contraste insuffisant (3,4:1 pour un minimum de 4,5:1) | Analyse SonarQube | Filtre réécrit avec un `fieldset` ; fond assombri, contraste de 4,9:1 | Analyse SonarQube rejouée : alertes levées |
+| À 20 utilisateurs simultanés, un process Node unique sature et la latence est multipliée par dix | Test de charge k6 | Non corrigée : limite documentée, avec les pistes d'optimisation, dans [PERF.md](PERF.md) | Seuils du test de charge |
+
+La correction d'une anomalie suit toujours le même ordre : écrire d'abord le test qui la reproduit, puis corriger (procédure dans [MAINTENANCE.md](MAINTENANCE.md)).
 
 ## Tests en place
 
