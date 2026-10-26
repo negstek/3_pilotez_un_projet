@@ -8,8 +8,8 @@ on:
   pull_request:
   workflow_dispatch:
   # Every Monday as well: a new advisory can concern a dependency that has not changed, and no push would reveal it.
-  schedule:
-    - cron: '0 6 * * 1'
+  # schedule:
+  #   - cron: '0 6 * * 1'
 
 permissions:
   contents: read
