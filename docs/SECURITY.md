@@ -39,6 +39,26 @@ Analyse :
 
 Résultat après correction : `npm audit` → **0 vulnérabilité**, dépendances de développement comprises.
 
+### Nouvelles alertes du 26/10/2026 : 5 vulnérabilités en production (4 hautes, 1 modérée), 4 en développement
+
+Le hook `pre-push` a bloqué un push sans rapport avec les dépendances : des avis publiés depuis le scan initial concernaient des paquets inchangés.
+
+| Paquet vulnérable | Gravité | Arrivé par | Avis | Décision |
+|---|---|---|---|---|
+| `body-parser` 2.0 – 2.3 | haute | `@nestjs/platform-express` → `express` | [GHSA-27r3-jxmh-p828](https://github.com/advisories/GHSA-27r3-jxmh-p828) (DoS par des octets après un corps compressé) | **Corrigée** : mise à jour vers 2.4.0, dans la plage déjà autorisée |
+| `multer` 2.0 – 2.4 | haute | `@nestjs/platform-express` | [GHSA-q7qp-rjg7-q26m](https://github.com/advisories/GHSA-q7qp-rjg7-q26m) (DoS par un `fileFilter` asynchrone en attente après la coupure de la requête) | **Corrigée** : `overrides` vers 2.5.0 |
+| `@nestjs/platform-express`, `@nestjs/core` | haute | dépendances directes (back) | dépendent de `multer` | **Corrigée** par l'`overrides` |
+| `fast-uri` 3.0 – 3.1.8 | modérée | `@nestjs/cli` → `ajv` | [GHSA-w74x-v6f9-j3xg](https://github.com/advisories/GHSA-w74x-v6f9-j3xg) et 3 autres (analyse d'URI) | **Corrigée** : mise à jour vers 3.1.9, dans la plage déjà autorisée |
+| `undici` 8.0 – 8.12.1 (dév.) | haute | `jsdom` (tests du front) | [GHSA-4qv8-2p9j-2685](https://github.com/advisories/GHSA-4qv8-2p9j-2685) et 2 autres | **Corrigée** : `npm audit fix`, vers 8.12.3 |
+| `vitest`, `@vitest/ui`, `@vitest/coverage-v8` 5.0.0 – 5.0.4 (dév.) | modérée | dépendances directes (trois packages) | [GHSA-p458-7748-mcp3](https://github.com/advisories/GHSA-p458-7748-mcp3) (le serveur de Vitest expose `.env` et `.git`) | **Corrigée** : 5.0.5 dans les trois packages |
+
+Analyse :
+
+- **`multer`** : même la dernière version de `@nestjs/platform-express` (12.2.0) fixe `multer` à 2.4.0 exactement. Il fallait donc forcer la version corrigée par le champ `overrides` du `package.json` racine. La 2.5.0 est une version mineure. L'upload et le téléchargement restent couverts par les tests e2e de l'API et le scénario Cypress, et tous passent. Comme les précédents, cet override est à retirer dès que NestJS embarque une version corrigée.
+- **`npm audit fix --force` est à proscrire** : il proposait de rétrograder `@nestjs/platform-express` en 11.1.1. Cette version est incompatible avec `@nestjs/core` 12 et embarque `multer` 1.4.5, une version encore plus ancienne. Le cas est le même que pour Prisma lors du scan initial.
+
+Résultat après correction : `npm audit` → **0 vulnérabilité**, dépendances de développement comprises.
+
 ### Trivy : dépôt et images Docker
 
 | Cible | Résultat | Décision |
